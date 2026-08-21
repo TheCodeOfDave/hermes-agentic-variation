@@ -6,6 +6,7 @@ import pytest
 
 from contracts import (
     Candidate,
+    ContinuationMemory,
     ContractValidationError,
     EvaluationResult,
     RunSpec,
@@ -173,6 +174,58 @@ def test_supervisor_advice_is_bounded_to_three_nonempty_directions():
             directions=("a", "b", "c", "d"),
             prohibited_repeats=(),
         )
+
+
+def test_continuation_memory_is_bounded_and_content_addressed():
+    memory = ContinuationMemory(
+        run_spec_hash=HEX_A,
+        memory_revision=1,
+        run_status="ready",
+        state_revision=3,
+        best_candidate_hash=HEX_B,
+        recent_candidate_hashes=(HEX_B,),
+        recent_evaluation_hashes=(HEX_A,),
+        recent_failure_signatures=("CHILD_TIMEOUT",),
+        tried_hypotheses=("Use memoized lookup",),
+        supervisor_advice_hash=None,
+    )
+
+    assert memory.contract_version == "avo.continuation-memory.v1"
+    assert re.fullmatch(r"[0-9a-f]{64}", memory.identity)
+
+    with pytest.raises(ContractValidationError, match="recent_candidate_hashes"):
+        ContinuationMemory(
+            run_spec_hash=HEX_A,
+            memory_revision=1,
+            run_status="ready",
+            state_revision=3,
+            best_candidate_hash=None,
+            recent_candidate_hashes=(HEX_A,) * 6,
+            recent_evaluation_hashes=(),
+            recent_failure_signatures=(),
+            tried_hypotheses=(),
+            supervisor_advice_hash=None,
+        )
+
+
+def test_continuation_memory_rejects_invalid_revisions_and_oversized_text():
+    base = {
+        "run_spec_hash": HEX_A,
+        "memory_revision": 1,
+        "run_status": "ready",
+        "state_revision": 3,
+        "best_candidate_hash": None,
+        "recent_candidate_hashes": (),
+        "recent_evaluation_hashes": (),
+        "recent_failure_signatures": (),
+        "tried_hypotheses": (),
+        "supervisor_advice_hash": None,
+    }
+    for field in ("memory_revision", "state_revision"):
+        with pytest.raises(ContractValidationError, match=field):
+            ContinuationMemory(**{**base, field: True})
+    with pytest.raises(ContractValidationError, match="tried_hypotheses"):
+        ContinuationMemory(**{**base, "tried_hypotheses": ("x" * 301,)})
 
 
 def test_terminal_receipt_accepts_only_terminal_states():

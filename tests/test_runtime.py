@@ -84,3 +84,20 @@ def test_runtime_adapter_cancels_timeout_and_returns_failure():
     assert result.error == "CHILD_TIMEOUT"
     assert len(service.cancelled) == 1
     assert len(result.result_hash) == 64
+
+
+def test_runtime_adapter_labels_phase2_metadata_and_timeout():
+    service = FakeService(timed_out=True, result=None)
+    adapter = HermesLifecycleAdapter(service, request_factory=request_factory, phase=2)
+
+    adapter.run(
+        goal="goal",
+        context="context",
+        role="leaf",
+        correlation_id="run:phase2",
+        allowed_toolsets=("todo",),
+        wait_seconds=3,
+    )
+
+    assert service.launched[0]["metadata"]["phase"] == 2
+    assert "Phase 2" in service.cancelled[0][1]

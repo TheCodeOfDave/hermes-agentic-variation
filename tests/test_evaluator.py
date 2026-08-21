@@ -9,7 +9,7 @@ HEX_A = "a" * 64
 HEX_B = "b" * 64
 
 
-def spec(comparison: str = "minimize") -> RunSpec:
+def spec(comparison: str = "minimize", *, strict_improvement: bool = False) -> RunSpec:
     return RunSpec(
         run_id="run-evaluator",
         target_root="/workspace/example",
@@ -17,7 +17,7 @@ def spec(comparison: str = "minimize") -> RunSpec:
         objective="Exercise deterministic evaluation.",
         exclusions=(),
         evaluator_id="fixture.runtime.v1",
-        evaluator_config={"source": "test"},
+        evaluator_config={"source": "test", "strict_improvement": strict_improvement},
         correctness_predicates=("tests_pass", "output_matches"),
         score_keys=("runtime_ms", "allocations"),
         comparison=comparison,
@@ -169,3 +169,17 @@ def test_fixture_evaluator_rejects_non_finite_candidate_or_baseline_scores():
             baseline_scores={"runtime_ms": 10.0, "allocations": 10.0},
             outcome=outcome(scores={"runtime_ms": True, "allocations": 10.0}),
         )
+
+
+def test_fixture_evaluator_can_require_strict_improvement():
+    run_spec = spec(strict_improvement=True)
+
+    result = FixtureEvaluator().evaluate(
+        run_spec,
+        candidate(run_spec),
+        baseline_scores={"runtime_ms": 10.0, "allocations": 10.0},
+        outcome=outcome(scores={"runtime_ms": 10.0, "allocations": 10.0}),
+    )
+
+    assert result.eligible is False
+    assert "strictly improve" in result.reason

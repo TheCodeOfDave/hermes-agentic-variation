@@ -53,10 +53,14 @@ def test_desktop_plugin_uses_only_supported_imports_and_theme_safe_styles():
 
 def test_native_manifest_declares_matching_configurable_defaults():
     manifest = (ROOT / "plugin.yaml").read_text(encoding="utf-8")
+    source = DESKTOP_PLUGIN.read_text(encoding="utf-8")
 
     assert "config_schema:" in manifest
     assert re.search(r"^  phase1_enabled:\s*", manifest, re.MULTILINE)
     assert re.search(r"^  phase1_wait_seconds:\s*", manifest, re.MULTILINE)
+    assert re.search(r"^  phase2_enabled:\s*", manifest, re.MULTILINE)
+    assert re.search(r"^  phase2_wait_seconds:\s*", manifest, re.MULTILINE)
+    assert "cannot be enabled from Desktop" in source
     for key in (
         "default_max_steps",
         "default_max_wall_seconds",

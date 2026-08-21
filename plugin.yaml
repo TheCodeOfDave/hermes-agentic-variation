@@ -1,12 +1,12 @@
 manifest_version: 2
 api_version: 1
 name: agentic-variation
-version: 0.2.0
-description: AVO-inspired bounded single-step experiment controller for Hermes Agent.
+version: 0.3.0
+description: AVO-inspired bounded continuation and supervision controller for Hermes Agent.
 author: TheCodeOfDave
 license: MIT
 homepage: https://github.com/TheCodeOfDave/hermes-agentic-variation
-tags: [agents, experimentation, evolutionary-search, phase-1]
+tags: [agents, experimentation, evolutionary-search, phase-2]
 config_schema:
   phase1_enabled:
     type: bool
@@ -16,6 +16,14 @@ config_schema:
     type: int
     default: 120
     description: Bounded wait for the single Phase 1 child; valid range 5-180 seconds.
+  phase2_enabled:
+    type: bool
+    default: false
+    description: Backend authority gate for explicit bounded Phase 2 continuation tools.
+  phase2_wait_seconds:
+    type: int
+    default: 120
+    description: Bounded wait per Phase 2 variation or supervisor child; valid range 5-180 seconds.
   default_max_steps:
     type: int
     default: 5
@@ -52,3 +60,7 @@ provides_tools:
   - avo_status
   - avo_cancel
   - avo_lineage
+  - avo_create_phase2_run
+  - avo_memory
+  - avo_reconcile
+  - avo_supervise

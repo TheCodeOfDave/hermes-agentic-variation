@@ -8,13 +8,13 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from .contracts import RunSpec
+    from .contracts import ContinuationMemory, RunSpec
     from .state_machine import RunState, apply_transition
 except ImportError:  # Direct module execution in local tests.
-    from contracts import RunSpec
+    from contracts import ContinuationMemory, RunSpec
     from state_machine import RunState, apply_transition
 
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 
 
 class StorageConflictError(RuntimeError):
@@ -53,6 +53,21 @@ def _spec_from_json(raw: str) -> RunSpec:
     return RunSpec(**data)
 
 
+def _memory_from_json(raw: str) -> ContinuationMemory:
+    data = json.loads(raw)
+    version = data.pop("contract_version", None)
+    if version != ContinuationMemory.contract_version:
+        raise StorageConflictError(f"unsupported ContinuationMemory contract version: {version}")
+    for name in (
+        "recent_candidate_hashes",
+        "recent_evaluation_hashes",
+        "recent_failure_signatures",
+        "tried_hypotheses",
+    ):
+        data[name] = tuple(data[name])
+    return ContinuationMemory(**data)
+
+
 class RunStore:
     """SQLite-backed Phase 0 run ledger with append-only transition evidence."""
 
@@ -77,9 +92,9 @@ class RunStore:
                     value TEXT NOT NULL
                 );
                 INSERT OR IGNORE INTO schema_metadata(key, value)
-                    VALUES ('schema_version', '2');
-                UPDATE schema_metadata SET value = '2'
-                    WHERE key = 'schema_version' AND CAST(value AS INTEGER) < 2;
+                    VALUES ('schema_version', '3');
+                UPDATE schema_metadata SET value = '3'
+                    WHERE key = 'schema_version' AND CAST(value AS INTEGER) < 3;
 
                 CREATE TABLE IF NOT EXISTS runs (
                     run_id TEXT PRIMARY KEY,
@@ -108,6 +123,19 @@ class RunStore:
                     run_id TEXT NOT NULL REFERENCES runs(run_id),
                     candidate_hash TEXT NOT NULL REFERENCES candidates(candidate_hash),
                     evaluation_json TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS continuation_memory (
+                    run_id TEXT PRIMARY KEY REFERENCES runs(run_id),
+                    memory_revision INTEGER NOT NULL,
+                    memory_hash TEXT NOT NULL,
+                    memory_json TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS supervisor_advice (
+                    advice_hash TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL REFERENCES runs(run_id),
+                    advice_json TEXT NOT NULL
                 );
 
                 CREATE TRIGGER IF NOT EXISTS run_events_no_update
@@ -283,6 +311,59 @@ class RunStore:
                     _canonical_json(evaluation.to_dict()),
                 ),
             )
+
+    def save_memory(
+        self, run_id: str, memory: ContinuationMemory, *, expected_revision: int
+    ) -> None:
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT memory_revision FROM continuation_memory WHERE run_id = ?", (run_id,)
+            ).fetchone()
+            current = 0 if row is None else int(row["memory_revision"])
+            if current != expected_revision:
+                raise StorageConflictError(
+                    f"memory revision mismatch: expected {expected_revision}, current {current}"
+                )
+            if memory.memory_revision != current + 1:
+                raise StorageConflictError("memory revision must increase by one")
+            payload = _canonical_json(memory.to_dict())
+            if row is None:
+                connection.execute(
+                    "INSERT INTO continuation_memory(run_id, memory_revision, memory_hash, memory_json) "
+                    "VALUES (?, ?, ?, ?)",
+                    (run_id, memory.memory_revision, memory.identity, payload),
+                )
+            else:
+                cursor = connection.execute(
+                    "UPDATE continuation_memory SET memory_revision=?, memory_hash=?, memory_json=? "
+                    "WHERE run_id=? AND memory_revision=?",
+                    (memory.memory_revision, memory.identity, payload, run_id, expected_revision),
+                )
+                if cursor.rowcount != 1:
+                    raise StorageConflictError("memory changed during update")
+
+    def load_memory(self, run_id: str) -> ContinuationMemory | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT memory_json FROM continuation_memory WHERE run_id = ?", (run_id,)
+            ).fetchone()
+        return None if row is None else _memory_from_json(row["memory_json"])
+
+    def record_supervisor_advice(self, run_id: str, advice: Any) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT INTO supervisor_advice(advice_hash, run_id, advice_json) VALUES (?, ?, ?)",
+                (advice.identity, run_id, _canonical_json(advice.to_dict())),
+            )
+
+    def supervisor_advice(self, run_id: str) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT advice_json FROM supervisor_advice WHERE run_id = ? ORDER BY rowid",
+                (run_id,),
+            ).fetchall()
+        return [json.loads(row["advice_json"]) for row in rows]
 
     def lineage(self, run_id: str) -> dict[str, list[dict[str, Any]]]:
         with self._connect() as connection:

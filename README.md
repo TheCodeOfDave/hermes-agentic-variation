@@ -5,9 +5,9 @@ An **AVO-inspired** long-horizon experiment controller for [Hermes Agent](https:
 > [!IMPORTANT]
 > This project is independent community work. It is not NVIDIA AVO, is not affiliated with NVIDIA, and does not reproduce NVIDIA's unreleased internal implementation.
 
-## Current status: Phase 1
+## Current status: Phase 2
 
-Phase 1 adds exactly one backend-gated Hermes child step against a built-in reasoning fixture. The child receives only the in-memory `todo` toolset. It has no file, command, repository, credential, or network authority.
+Phase 2 adds persistent compact continuation memory, deterministic interrupted-run reconciliation, and at most one backend-gated supervisor advice call. Every advance remains an explicit tool call. Children receive only the in-memory `todo` toolset and have no file, command, repository, credential, or network authority.
 
 Implemented now:
 
@@ -16,7 +16,7 @@ Implemented now:
 - a deterministic run state machine with explicit terminal states and bounded stagnation handling;
 - a SQLite run ledger with optimistic concurrency and append-only transition evidence;
 - a model-free fixture evaluator that fails closed on missing correctness or score evidence;
-- seven Hermes tools:
+- eleven Hermes tools:
   - `avo_phase0_info`
   - `avo_validate_run_spec`
   - `avo_create_run`
@@ -24,20 +24,27 @@ Implemented now:
   - `avo_status`
   - `avo_cancel`
   - `avo_lineage`
+  - `avo_create_phase2_run`
+  - `avo_memory`
+  - `avo_reconcile`
+  - `avo_supervise`
 - an opt-in Hermes Desktop companion with an **Agentic Variation** configuration page;
 - configurable planning defaults for step, time, cost, stagnation, network, toolset, and evaluator fields, stored in the Desktop plugin's isolated local storage.
 
-Phase 1 remains deliberately narrow:
+Phase 2 remains deliberately narrow:
 
-- one child and one candidate only;
-- execution disabled by default through backend `phase1_enabled: false`;
+- at most three explicitly requested variation steps;
+- one supervisor advice call after deterministic stagnation;
+- execution disabled by default through independent backend Phase 1 and Phase 2 gates;
+- versioned compact continuation memory and additive SQLite schema v3;
+- deterministic reconciliation from persisted evidence rather than process-local handles;
 - no child file or command tools;
 - command execution;
 - repository mutation;
 - experiment scheduling;
 - network access;
 - candidate promotion, publication, or deployment;
-- persistent autonomous loops or supervisor intervention.
+- autonomous schedules, recurrence, or multiple supervisor interventions.
 
 That absence is deliberate. First make the control plane boring and correct. Then attach an agent.
 
@@ -45,16 +52,17 @@ That absence is deliberate. First make the control plane boring and correct. The
 
 ```text
 Approved immutable RunSpec
-  -> one no-file/no-command child choice
+  -> explicit todo-only child choice
   -> deterministic evaluator
-  -> append-only evidence receipt
-  -> succeeded candidate or explicit no-result terminal state
-  -> stop
+  -> append-only evidence + compact continuation memory
+  -> ready | supervision_required | terminal
+  -> optional one todo-only supervisor advice
+  -> explicit next step or stop
 ```
 
 The evaluator—not a model—owns candidate eligibility.
 
-See [`docs/PHASE0.md`](docs/PHASE0.md) for the foundation and [`docs/PHASE1.md`](docs/PHASE1.md) for the bounded child contract.
+See [`docs/PHASE0.md`](docs/PHASE0.md), [`docs/PHASE1.md`](docs/PHASE1.md), and [`docs/PHASE2.md`](docs/PHASE2.md).
 
 ## Development
 
@@ -85,7 +93,7 @@ This repository is a unified Hermes package: the native Python plugin lives at t
 - a configuration page at `/agentic-variation`;
 - an **Agentic Variation: configure** command in the command palette.
 
-Desktop options remain inert planning defaults. The executable Phase 1 gate is backend-owned in `plugins.entries.agentic-variation.settings.phase1_enabled` and cannot be enabled from Desktop.
+Desktop options remain inert planning defaults. Executable gates are backend-owned in `plugins.entries.agentic-variation.settings` and cannot be enabled from Desktop.
 
 ## Research basis
 

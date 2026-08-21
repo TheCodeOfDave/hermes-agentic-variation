@@ -219,6 +219,48 @@ class SupervisorAdvice(ContractMixin):
 
 
 @dataclass(frozen=True)
+class ContinuationMemory(ContractMixin):
+    contract_version: ClassVar[str] = "avo.continuation-memory.v1"
+
+    run_spec_hash: str
+    memory_revision: int
+    run_status: str
+    state_revision: int
+    best_candidate_hash: str | None
+    recent_candidate_hashes: tuple[str, ...]
+    recent_evaluation_hashes: tuple[str, ...]
+    recent_failure_signatures: tuple[str, ...]
+    tried_hypotheses: tuple[str, ...]
+    supervisor_advice_hash: str | None
+
+    def __post_init__(self) -> None:
+        _require_digest("run_spec_hash", self.run_spec_hash)
+        _require_text("run_status", self.run_status)
+        if type(self.memory_revision) is not int or self.memory_revision <= 0:
+            raise ContractValidationError("memory_revision must be a positive integer")
+        if type(self.state_revision) is not int or self.state_revision < 0:
+            raise ContractValidationError("state_revision must be a non-negative integer")
+        if self.best_candidate_hash is not None:
+            _require_digest("best_candidate_hash", self.best_candidate_hash)
+        if self.supervisor_advice_hash is not None:
+            _require_digest("supervisor_advice_hash", self.supervisor_advice_hash)
+        for name in ("recent_candidate_hashes", "recent_evaluation_hashes"):
+            values = getattr(self, name)
+            _require_text_tuple(name, values)
+            if len(values) > 5:
+                raise ContractValidationError(f"{name} must contain at most five items")
+            for digest in values:
+                _require_digest(name, digest)
+        for name in ("recent_failure_signatures", "tried_hypotheses"):
+            values = getattr(self, name)
+            _require_text_tuple(name, values)
+            if len(values) > 5:
+                raise ContractValidationError(f"{name} must contain at most five items")
+            if any(len(item) > 300 for item in values):
+                raise ContractValidationError(f"{name} entries must be at most 300 characters")
+
+
+@dataclass(frozen=True)
 class TerminalReceipt(ContractMixin):
     contract_version: ClassVar[str] = "avo.terminal-receipt.v1"
     TERMINAL_STATES: ClassVar[frozenset[str]] = frozenset(

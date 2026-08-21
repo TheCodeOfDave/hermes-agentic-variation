@@ -14,9 +14,15 @@ _TERMINAL = frozenset({"succeeded", "no_result", "cancelled", "budget_exhausted"
 _ALLOWED = {
     "created": {"approve", "cancel"},
     "ready": {"start_step", "pause", "cancel", "complete"},
-    "running": {"candidate_ready", "child_failed", "cancel"},
-    "evaluating": {"evaluation_eligible", "evaluation_ineligible", "cancel"},
-    "supervision_required": {"supervisor_applied", "pause", "cancel", "complete"},
+    "running": {"candidate_ready", "child_failed", "interrupt", "cancel"},
+    "evaluating": {
+        "evaluation_eligible",
+        "evaluation_ineligible",
+        "evaluation_missing",
+        "cancel",
+    },
+    "supervision_required": {"start_supervisor", "pause", "cancel", "complete"},
+    "supervising": {"supervisor_applied", "supervisor_failed", "cancel"},
     "paused": {"resume", "cancel"},
 }
 
@@ -123,7 +129,7 @@ def apply_transition(
         return replace(state, status="running", revision=state.revision + 1)
     if event == "candidate_ready":
         return replace(state, status="evaluating", revision=state.revision + 1)
-    if event == "child_failed":
+    if event in {"child_failed", "interrupt", "evaluation_missing"}:
         return _next_after_attempt(
             state, spec, progressed=False, candidate_hash=None, cost_delta=cost_delta
         )
@@ -141,6 +147,8 @@ def apply_transition(
         return _next_after_attempt(
             state, spec, progressed=False, candidate_hash=None, cost_delta=cost_delta
         )
+    if event == "start_supervisor":
+        return replace(state, status="supervising", revision=state.revision + 1)
     if event == "supervisor_applied":
         return replace(
             state,
@@ -148,6 +156,9 @@ def apply_transition(
             revision=state.revision + 1,
             consecutive_no_progress=0,
         )
+    if event == "supervisor_failed":
+        status = "succeeded" if state.best_candidate_hash else "no_result"
+        return replace(state, status=status, revision=state.revision + 1)
     if event == "pause":
         return replace(
             state,

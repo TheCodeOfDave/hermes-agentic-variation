@@ -64,16 +64,27 @@ class FixtureEvaluator:
             non_regressing = all(
                 outcome.scores[key] <= baseline_scores[key] for key in run_spec.score_keys
             )
+            strictly_better = any(
+                outcome.scores[key] < baseline_scores[key] for key in run_spec.score_keys
+            )
         else:
             non_regressing = all(
                 outcome.scores[key] >= baseline_scores[key] for key in run_spec.score_keys
             )
+            strictly_better = any(
+                outcome.scores[key] > baseline_scores[key] for key in run_spec.score_keys
+            )
 
-        eligible = correctness_passed and non_regressing
+        strict_required = run_spec.evaluator_config.get("strict_improvement") is True
+        eligible = correctness_passed and non_regressing and (
+            strictly_better or not strict_required
+        )
         if not correctness_passed:
             reason = "candidate failed at least one correctness predicate"
         elif not non_regressing:
             reason = "candidate regressed at least one required score"
+        elif strict_required and not strictly_better:
+            reason = "candidate did not strictly improve a required score"
         else:
             reason = "correctness passed and scores are non-regressing"
 

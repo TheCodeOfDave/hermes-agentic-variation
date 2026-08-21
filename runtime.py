@@ -12,9 +12,16 @@ except ImportError:  # Direct module execution in local tests.
 class HermesLifecycleAdapter:
     """Narrow adapter over Hermes' public subagent lifecycle service."""
 
-    def __init__(self, service: Any, *, request_factory: Callable[..., Any] | None = None):
+    def __init__(
+        self,
+        service: Any,
+        *,
+        request_factory: Callable[..., Any] | None = None,
+        phase: int = 1,
+    ):
         self.service = service
         self.request_factory = request_factory
+        self.phase = phase
 
     def _request(self, **kwargs: Any) -> Any:
         factory = self.request_factory
@@ -40,12 +47,14 @@ class HermesLifecycleAdapter:
             role=role,
             correlation_id=correlation_id,
             allowed_toolsets=allowed_toolsets,
-            metadata={"plugin": "agentic-variation", "phase": 1},
+            metadata={"plugin": "agentic-variation", "phase": self.phase},
         )
         handle = self.service.launch(request)
         terminal = self.service.wait(handle, timeout_seconds=wait_seconds)
         if terminal.timed_out:
-            self.service.cancel(handle, reason="Agentic Variation Phase 1 wait budget expired")
+            self.service.cancel(
+                handle, reason=f"Agentic Variation Phase {self.phase} wait budget expired"
+            )
             digest = hashlib.sha256(f"timeout:{correlation_id}".encode("utf-8")).hexdigest()
             return ChildOutcome(
                 terminal_state="FAILED",

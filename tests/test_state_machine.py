@@ -81,7 +81,8 @@ def test_repeated_ineligible_results_trigger_supervision_at_exact_limit():
         state = apply_transition(state, "evaluation_ineligible", spec)
         assert state.status == expected_status
 
-    resumed = apply_transition(state, "supervisor_applied", spec)
+    supervising = apply_transition(state, "start_supervisor", spec)
+    resumed = apply_transition(supervising, "supervisor_applied", spec)
     assert resumed.status == "ready"
     assert resumed.consecutive_no_progress == 0
 
@@ -150,6 +151,43 @@ def test_accumulated_cost_overflow_is_rejected_before_persistence():
 
     with pytest.raises(TransitionError, match="accumulated cost"):
         apply_transition(state, "child_failed", spec, cost_delta=1e308)
+
+
+def test_interruption_counts_no_progress_and_requires_supervision():
+    spec = run_spec(max_steps=3, no_progress_limit=1)
+    state = approved_state(spec)
+    state = apply_transition(state, "start_step", spec)
+
+    state = apply_transition(state, "interrupt", spec)
+
+    assert state.status == "supervision_required"
+    assert state.steps_used == 1
+    assert state.consecutive_no_progress == 1
+
+
+def test_missing_evaluation_counts_no_progress_and_requires_supervision():
+    spec = run_spec(max_steps=3, no_progress_limit=1)
+    state = approved_state(spec)
+    state = apply_transition(state, "start_step", spec)
+    state = apply_transition(state, "candidate_ready", spec)
+
+    state = apply_transition(state, "evaluation_missing", spec)
+
+    assert state.status == "supervision_required"
+    assert state.steps_used == 1
+
+
+def test_supervisor_has_explicit_in_flight_state_and_failure_terminal():
+    spec = run_spec(max_steps=3, no_progress_limit=1)
+    state = approved_state(spec)
+    state = apply_transition(state, "start_step", spec)
+    state = apply_transition(state, "interrupt", spec)
+
+    state = apply_transition(state, "start_supervisor", spec)
+    assert state.status == "supervising"
+
+    state = apply_transition(state, "supervisor_failed", spec)
+    assert state.status == "no_result"
 
 
 def test_eligible_final_step_finishes_as_succeeded():

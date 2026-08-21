@@ -62,3 +62,18 @@ AVO_CANCEL = _run_id_schema("avo_cancel", "Cancel a Phase 1 run before its child
 AVO_LINEAGE = _run_id_schema(
     "avo_lineage", "Read candidate and evaluation evidence for a Phase 1 fixture run."
 )
+
+AVO_CREATE_PHASE2_RUN = {
+    **AVO_CREATE_RUN,
+    "name": "avo_create_phase2_run",
+    "description": "Create one approved bounded Phase 2 continuation run.",
+}
+AVO_MEMORY = _run_id_schema(
+    "avo_memory", "Read compact persistent continuation memory for a Phase 2 run."
+)
+AVO_RECONCILE = _run_id_schema(
+    "avo_reconcile", "Reconcile an interrupted Phase 2 run from durable evidence."
+)
+AVO_SUPERVISE = _run_id_schema(
+    "avo_supervise", "Request the one allowed todo-only supervisor advice."
+)

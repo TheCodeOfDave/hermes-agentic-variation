@@ -70,6 +70,10 @@ def test_plugin_registers_phase0_compatibility_and_bounded_phase1_tools():
         "avo_status",
         "avo_cancel",
         "avo_lineage",
+        "avo_create_phase2_run",
+        "avo_memory",
+        "avo_reconcile",
+        "avo_supervise",
     }
     assert {tool["toolset"] for tool in ctx.tools.values()} == {"agentic-variation"}
     assert all(tool["schema"]["name"] == name for name, tool in ctx.tools.items())
@@ -82,10 +86,14 @@ def test_info_handler_reports_phase1_backend_gate_is_off_by_default():
 
     result = json.loads(ctx.tools["avo_phase0_info"]["handler"]({}))
 
-    assert result["phase"] == 1
+    assert result["phase"] == 2
     assert result["execution_enabled"] is False
-    assert result["single_step_only"] is True
-    assert result["schema_version"] == 2
+    assert result["phase2_execution_enabled"] is False
+    assert result["single_step_only"] is False
+    assert result["explicit_manual_steps_only"] is True
+    assert result["max_phase2_steps"] == 3
+    assert result["max_supervisor_calls"] == 1
+    assert result["schema_version"] == 3
 
 
 def test_validate_handler_returns_stable_identity_for_valid_payload():

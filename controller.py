@@ -103,17 +103,8 @@ class Phase1Controller:
 
         try:
             child = self.lifecycle.run(
-                goal=(
-                    "Choose the best deterministic strategy for the supplied fixture. "
-                    "Return exactly one JSON object with string fields strategy and rationale. "
-                    "Allowed strategy values: baseline, single_pass, memoized_lookup."
-                ),
-                context=(
-                    "This is an isolated reasoning fixture. You have no file, command, repository, "
-                    "credential, or network authority. The only permitted output is the requested JSON. "
-                    "Scores are deterministic operations: baseline=10, single_pass=7, "
-                    "memoized_lookup=5. Lower is better."
-                ),
+                goal=self._variation_goal(run_id),
+                context=self._variation_context(run_id),
                 role="leaf",
                 correlation_id=f"{run_id}:revision:{state.revision}",
                 allowed_toolsets=("todo",),
@@ -183,9 +174,9 @@ class Phase1Controller:
             separators=(",", ":"),
         ).encode("utf-8")
         candidate = Candidate(
-            candidate_id=f"{run_id}-candidate-1",
+            candidate_id=f"{run_id}-candidate-{state.steps_used + 1}",
             run_spec_hash=spec.identity,
-            parent_candidate_id=None,
+            parent_candidate_id=state.best_candidate_hash,
             artifact_digest=hashlib.sha256(artifact).hexdigest(),
             child_result_hash=child.result_hash,
             changed_paths=("fixtures/strategy.json",),
@@ -196,10 +187,21 @@ class Phase1Controller:
             scores={"operations": _STRATEGY_SCORES[strategy]},
             evidence=artifact,
         )
+        baseline_scores = {"operations": _STRATEGY_SCORES["baseline"]}
+        prior_evaluations = self.store.lineage(run_id)["evaluations"]
+        for prior in reversed(prior_evaluations):
+            if prior.get("eligible") is True:
+                prior_scores = prior.get("scores", {})
+                prior_operations = prior_scores.get("operations")
+                if isinstance(prior_operations, (int, float)) and not isinstance(
+                    prior_operations, bool
+                ):
+                    baseline_scores = {"operations": float(prior_operations)}
+                    break
         evaluation = self.evaluator.evaluate(
             spec,
             candidate,
-            baseline_scores={"operations": _STRATEGY_SCORES["baseline"]},
+            baseline_scores=baseline_scores,
             outcome=outcome,
         )
         self.store.record_attempt(run_id, candidate, evaluation)
@@ -247,6 +249,23 @@ class Phase1Controller:
             )
         state = self.store.transition(run_id, "cancel", expected_revision=state.revision)
         return {"run_id": run_id, "status": state.status}
+
+    def _variation_goal(self, run_id: str) -> str:
+        del run_id
+        return (
+            "Choose the best deterministic strategy for the supplied fixture. "
+            "Return exactly one JSON object with string fields strategy and rationale. "
+            "Allowed strategy values: baseline, single_pass, memoized_lookup."
+        )
+
+    def _variation_context(self, run_id: str) -> str:
+        del run_id
+        return (
+            "This is an isolated reasoning fixture. You have no file, command, repository, "
+            "credential, or network authority. The only permitted output is the requested JSON. "
+            "Scores are deterministic operations: baseline=10, single_pass=7, "
+            "memoized_lookup=5. Lower is better."
+        )
 
     @staticmethod
     def _parse_child_payload(summary: str) -> tuple[str, str] | None:
