@@ -1,0 +1,41 @@
+manifest_version: 2
+api_version: 1
+name: agentic-variation
+version: 0.1.0
+description: AVO-inspired deterministic contracts and state-machine foundation for Hermes Agent.
+author: TheCodeOfDave
+license: MIT
+homepage: https://github.com/TheCodeOfDave/hermes-agentic-variation
+tags: [agents, experimentation, evolutionary-search, phase-0]
+config_schema:
+  default_max_steps:
+    type: int
+    default: 5
+    description: Default candidate-step ceiling for a future approved RunSpec.
+  default_max_wall_seconds:
+    type: int
+    default: 600
+    description: Default wall-clock budget for a future approved run.
+  default_max_cost_usd:
+    type: float
+    default: 1.0
+    description: Default model cost ceiling for a future approved run.
+  default_no_progress_limit:
+    type: int
+    default: 2
+    description: Non-improving attempts before future supervision is required.
+  network_policy:
+    type: str
+    default: disabled
+    description: Future-run network default; use disabled or allowlist.
+  allowed_toolsets:
+    type: list
+    default: [file, terminal]
+    description: Future child toolset ceiling; child authority can only narrow the parent.
+  evaluator_id:
+    type: str
+    default: fixture.score.v1
+    description: Immutable evaluator adapter identifier for a future RunSpec.
+provides_tools:
+  - avo_phase0_info
+  - avo_validate_run_spec
