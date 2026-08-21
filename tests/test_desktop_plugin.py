@@ -60,6 +60,9 @@ def test_native_manifest_declares_matching_configurable_defaults():
     assert re.search(r"^  phase1_wait_seconds:\s*", manifest, re.MULTILINE)
     assert re.search(r"^  phase2_enabled:\s*", manifest, re.MULTILINE)
     assert re.search(r"^  phase2_wait_seconds:\s*", manifest, re.MULTILINE)
+    assert re.search(r"^  phase3_enabled:\s*", manifest, re.MULTILINE)
+    assert re.search(r"^  phase3_wait_seconds:\s*", manifest, re.MULTILINE)
+    assert re.search(r"^  phase3_test_timeout_seconds:\s*", manifest, re.MULTILINE)
     assert "cannot be enabled from Desktop" in source
     for key in (
         "default_max_steps",

@@ -261,6 +261,63 @@ class ContinuationMemory(ContractMixin):
 
 
 @dataclass(frozen=True)
+class MutationReceipt(ContractMixin):
+    contract_version: ClassVar[str] = "avo.mutation-receipt.v1"
+    COMMAND_ID: ClassVar[str] = "phase3.python-unittest.v1"
+
+    receipt_id: str
+    run_spec_hash: str
+    candidate_hash: str
+    evaluation_hash: str
+    repository_id: str
+    baseline_tree_hash: str
+    mutated_tree_hash: str
+    mutation: str
+    changed_paths: tuple[str, ...]
+    command_id: str
+    exit_code: int
+    tests_passed: bool
+    stdout_hash: str
+    stderr_hash: str
+    repository_retained: bool
+    cleanup_status: str
+
+    def __post_init__(self) -> None:
+        for name in ("receipt_id", "repository_id"):
+            _require_text(name, getattr(self, name))
+        for name in (
+            "run_spec_hash",
+            "candidate_hash",
+            "evaluation_hash",
+            "baseline_tree_hash",
+            "mutated_tree_hash",
+            "stdout_hash",
+            "stderr_hash",
+        ):
+            _require_digest(name, getattr(self, name))
+        if not re.fullmatch(r"phase3-[0-9a-f]{6,32}", self.repository_id):
+            raise ContractValidationError("repository_id must be a Phase 3 identifier")
+        if self.mutation not in {"baseline", "filter_odd", "filter_even"}:
+            raise ContractValidationError("mutation must be a supported Phase 3 enum")
+        _require_text_tuple("changed_paths", self.changed_paths, allow_empty=False)
+        for raw_path in self.changed_paths:
+            normalized = raw_path.replace("\\", "/")
+            path = PurePosixPath(normalized)
+            if path.is_absolute() or re.match(r"^[A-Za-z]:", normalized) or ".." in path.parts:
+                raise ContractValidationError("changed_paths must be relative and traversal-free")
+        if self.command_id != self.COMMAND_ID:
+            raise ContractValidationError("command_id must be the fixed Phase 3 command")
+        if type(self.exit_code) is not int:
+            raise ContractValidationError("exit_code must be an integer")
+        if not isinstance(self.tests_passed, bool):
+            raise ContractValidationError("tests_passed must be Boolean")
+        if self.tests_passed != (self.exit_code == 0):
+            raise ContractValidationError("tests_passed must agree with exit_code")
+        if self.repository_retained is not True or self.cleanup_status != "retained":
+            raise ContractValidationError("Phase 3 repository must remain retained")
+
+
+@dataclass(frozen=True)
 class TerminalReceipt(ContractMixin):
     contract_version: ClassVar[str] = "avo.terminal-receipt.v1"
     TERMINAL_STATES: ClassVar[frozenset[str]] = frozenset(

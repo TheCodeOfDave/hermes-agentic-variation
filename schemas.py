@@ -77,3 +77,18 @@ AVO_RECONCILE = _run_id_schema(
 AVO_SUPERVISE = _run_id_schema(
     "avo_supervise", "Request the one allowed todo-only supervisor advice."
 )
+
+AVO_CREATE_PHASE3_RUN = {
+    **AVO_CREATE_RUN,
+    "name": "avo_create_phase3_run",
+    "description": "Create one plugin-owned disposable Phase 3 Git fixture repository.",
+}
+AVO_MUTATE_PHASE3 = _run_id_schema(
+    "avo_mutate_phase3", "Run one todo-only closed-enum mutation and fixed test command."
+)
+AVO_PHASE3_RECEIPT = _run_id_schema(
+    "avo_phase3_receipt", "Read the append-only retained-repository mutation receipt."
+)
+AVO_PHASE3_RECONCILE = _run_id_schema(
+    "avo_phase3_reconcile", "Reconcile interrupted Phase 3 state without rerunning effects."
+)

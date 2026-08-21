@@ -4,7 +4,7 @@ import sqlite3
 
 import pytest
 
-from contracts import ContinuationMemory, RunSpec, SupervisorAdvice
+from contracts import ContinuationMemory, MutationReceipt, RunSpec, SupervisorAdvice
 from state_machine import TransitionError
 from storage import RunStore, StorageConflictError
 
@@ -43,7 +43,7 @@ def test_store_creates_schema_and_round_trips_immutable_run(tmp_path):
     assert created.status == "created"
     assert loaded_spec.identity == spec.identity
     assert loaded_state == created
-    assert store.schema_version() == 3
+    assert store.schema_version() == 4
 
 
 def test_store_migrates_phase0_schema_metadata_and_adds_phase1_tables(tmp_path):
@@ -59,7 +59,7 @@ def test_store_migrates_phase0_schema_metadata_and_adds_phase1_tables(tmp_path):
 
     store = RunStore(database)
 
-    assert store.schema_version() == 3
+    assert store.schema_version() == 4
     check = sqlite3.connect(database)
     tables = {
         row[0]
@@ -121,7 +121,7 @@ def test_store_migrates_populated_v2_without_changing_existing_rows(tmp_path):
     }
     check.close()
 
-    assert store.schema_version() == 3
+    assert store.schema_version() == 4
     assert counts == {"runs": 1, "run_events": 1, "candidates": 1, "evaluations": 1}
     assert phase2_tables == {"continuation_memory", "supervisor_advice"}
 
@@ -176,6 +176,74 @@ def test_store_records_supervisor_advice(tmp_path):
     store.record_supervisor_advice(spec.run_id, advice)
 
     assert store.supervisor_advice(spec.run_id) == [advice.to_dict()]
+
+
+def test_store_records_append_only_mutation_receipt(tmp_path):
+    store = RunStore(tmp_path / "runs.db")
+    spec = run_spec()
+    store.create_run(spec)
+    receipt = MutationReceipt(
+        receipt_id="mutation-1",
+        run_spec_hash=spec.identity,
+        candidate_hash="b" * 64,
+        evaluation_hash="c" * 64,
+        repository_id="phase3-abcdef",
+        baseline_tree_hash="d" * 64,
+        mutated_tree_hash="e" * 64,
+        mutation="filter_even",
+        changed_paths=("calculator.py",),
+        command_id="phase3.python-unittest.v1",
+        exit_code=0,
+        tests_passed=True,
+        stdout_hash="f" * 64,
+        stderr_hash="a" * 64,
+        repository_retained=True,
+        cleanup_status="retained",
+    )
+
+    store.record_mutation_receipt(spec.run_id, receipt)
+
+    assert store.mutation_receipts(spec.run_id) == [receipt.to_dict()]
+    assert RunStore(store.database_path).mutation_receipts(spec.run_id) == [receipt.to_dict()]
+    connection = sqlite3.connect(store.database_path)
+    with pytest.raises(sqlite3.DatabaseError, match="append-only"):
+        connection.execute("UPDATE mutation_receipts SET receipt_json='{}'")
+    with pytest.raises(sqlite3.DatabaseError, match="append-only"):
+        connection.execute("DELETE FROM mutation_receipts")
+    connection.close()
+
+
+def test_store_migrates_populated_v3_memory_and_advice_to_v4(tmp_path):
+    database = tmp_path / "v3.db"
+    store = RunStore(database)
+    spec = run_spec()
+    store.create_run(spec)
+    store.save_memory(spec.run_id, continuation(spec), expected_revision=0)
+    advice = SupervisorAdvice(
+        advice_id="advice-v3",
+        run_spec_hash=spec.identity,
+        stagnation_evidence_hash="b" * 64,
+        directions=("Try one bounded direction",),
+        prohibited_repeats=(),
+    )
+    store.record_supervisor_advice(spec.run_id, advice)
+    connection = sqlite3.connect(database)
+    connection.execute("DROP TABLE mutation_receipts")
+    connection.execute("UPDATE schema_metadata SET value='3' WHERE key='schema_version'")
+    connection.commit()
+    connection.close()
+
+    migrated = RunStore(database)
+
+    assert migrated.schema_version() == 4
+    assert migrated.load_memory(spec.run_id) == continuation(spec)
+    assert migrated.supervisor_advice(spec.run_id) == [advice.to_dict()]
+    check = sqlite3.connect(database)
+    exists = check.execute(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='mutation_receipts'"
+    ).fetchone()[0]
+    check.close()
+    assert exists == 1
 
 
 def test_store_rejects_duplicate_run_id(tmp_path):

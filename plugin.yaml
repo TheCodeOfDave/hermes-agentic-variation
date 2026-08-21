@@ -1,12 +1,12 @@
 manifest_version: 2
 api_version: 1
 name: agentic-variation
-version: 0.3.0
-description: AVO-inspired bounded continuation and supervision controller for Hermes Agent.
+version: 0.4.0
+description: AVO-inspired bounded disposable-repository mutation controller for Hermes Agent.
 author: TheCodeOfDave
 license: MIT
 homepage: https://github.com/TheCodeOfDave/hermes-agentic-variation
-tags: [agents, experimentation, evolutionary-search, phase-2]
+tags: [agents, experimentation, evolutionary-search, phase-3]
 config_schema:
   phase1_enabled:
     type: bool
@@ -24,6 +24,18 @@ config_schema:
     type: int
     default: 120
     description: Bounded wait per Phase 2 variation or supervisor child; valid range 5-180 seconds.
+  phase3_enabled:
+    type: bool
+    default: false
+    description: Backend authority gate for one trusted-template disposable-repository mutation.
+  phase3_wait_seconds:
+    type: int
+    default: 120
+    description: Bounded wait for the todo-only Phase 3 mutation-selection child.
+  phase3_test_timeout_seconds:
+    type: int
+    default: 20
+    description: Timeout for the fixed Python unittest evaluator; valid range 1-60 seconds.
   default_max_steps:
     type: int
     default: 5
@@ -64,3 +76,7 @@ provides_tools:
   - avo_memory
   - avo_reconcile
   - avo_supervise
+  - avo_create_phase3_run
+  - avo_mutate_phase3
+  - avo_phase3_receipt
+  - avo_phase3_reconcile

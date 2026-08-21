@@ -96,7 +96,7 @@ function ConfigurationPage({ storage }) {
           jsx('p', {
             className: 'max-w-3xl text-sm text-(--ui-text-tertiary)',
             children:
-              'Configure inert planning defaults. The executable Phase 2 gate is backend-owned in config.yaml and cannot be enabled from Desktop. Phase 2 advances only by explicit calls, allows one todo-only supervisor, and never grants file, command, repository, credential, or network authority.'
+              'Configure inert planning defaults. Phase 3 execution is backend-owned in config.yaml and cannot be enabled from Desktop. The child remains todo-only; the controller may mutate only trusted templates inside a plugin-owned disposable repository and cannot commit, push, use credentials, network, deploy, or delete.'
           })
         ]
       }),

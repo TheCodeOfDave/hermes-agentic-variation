@@ -74,6 +74,10 @@ def test_plugin_registers_phase0_compatibility_and_bounded_phase1_tools():
         "avo_memory",
         "avo_reconcile",
         "avo_supervise",
+        "avo_create_phase3_run",
+        "avo_mutate_phase3",
+        "avo_phase3_receipt",
+        "avo_phase3_reconcile",
     }
     assert {tool["toolset"] for tool in ctx.tools.values()} == {"agentic-variation"}
     assert all(tool["schema"]["name"] == name for name, tool in ctx.tools.items())
@@ -86,14 +90,46 @@ def test_info_handler_reports_phase1_backend_gate_is_off_by_default():
 
     result = json.loads(ctx.tools["avo_phase0_info"]["handler"]({}))
 
-    assert result["phase"] == 2
+    assert result["phase"] == 3
     assert result["execution_enabled"] is False
     assert result["phase2_execution_enabled"] is False
+    assert result["phase3_execution_enabled"] is False
     assert result["single_step_only"] is False
     assert result["explicit_manual_steps_only"] is True
     assert result["max_phase2_steps"] == 3
     assert result["max_supervisor_calls"] == 1
-    assert result["schema_version"] == 3
+    assert result["schema_version"] == 4
+    assert result["phase3_child_toolsets"] == ["todo"]
+    assert result["phase3_controller_mutation"] is True
+
+
+def test_generic_step_rejects_phase3_run_without_launching_phase1_controller():
+    plugin = load_plugin_module()
+    ctx = FakeContext()
+    plugin.register(ctx)
+
+    result = json.loads(ctx.tools["avo_step"]["handler"]({"run_id": "phase3-abcdef"}))
+
+    assert result["ok"] is False
+    assert result["error_type"] == "Phase3ToolRoutingError"
+    assert "avo_mutate_phase3" in result["error"]
+
+
+def test_phase2_only_tools_reject_phase3_run_ids():
+    plugin = load_plugin_module()
+    ctx = FakeContext()
+    plugin.register(ctx)
+
+    expected = {
+        "avo_memory": "avo_phase3_receipt",
+        "avo_reconcile": "avo_phase3_reconcile",
+        "avo_supervise": "avo_mutate_phase3",
+    }
+    for tool_name, replacement in expected.items():
+        result = json.loads(ctx.tools[tool_name]["handler"]({"run_id": "phase3-abcdef"}))
+        assert result["ok"] is False
+        assert result["error_type"] == "Phase3ToolRoutingError"
+        assert replacement in result["error"]
 
 
 def test_validate_handler_returns_stable_identity_for_valid_payload():

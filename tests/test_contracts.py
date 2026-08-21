@@ -9,6 +9,7 @@ from contracts import (
     ContinuationMemory,
     ContractValidationError,
     EvaluationResult,
+    MutationReceipt,
     RunSpec,
     SupervisorAdvice,
     TerminalReceipt,
@@ -265,3 +266,32 @@ def test_terminal_receipt_accepts_only_terminal_states():
                 unresolved_failures=(),
                 export_manifest_hash=HEX_B,
             )
+
+
+def test_mutation_receipt_binds_fixed_command_and_retained_repository():
+    receipt = MutationReceipt(
+        receipt_id="mutation-1",
+        run_spec_hash=HEX_A,
+        candidate_hash=HEX_B,
+        evaluation_hash=HEX_A,
+        repository_id="phase3-abc123",
+        baseline_tree_hash=HEX_A,
+        mutated_tree_hash=HEX_B,
+        mutation="filter_even",
+        changed_paths=("calculator.py",),
+        command_id="phase3.python-unittest.v1",
+        exit_code=0,
+        tests_passed=True,
+        stdout_hash=HEX_A,
+        stderr_hash=HEX_B,
+        repository_retained=True,
+        cleanup_status="retained",
+    )
+
+    assert receipt.contract_version == "avo.mutation-receipt.v1"
+    assert receipt.identity
+
+    with pytest.raises(ContractValidationError, match="command_id"):
+        MutationReceipt(**{**receipt.__dict__, "command_id": "shell"})
+    with pytest.raises(ContractValidationError, match="changed_paths"):
+        MutationReceipt(**{**receipt.__dict__, "changed_paths": ("../escape",)})
