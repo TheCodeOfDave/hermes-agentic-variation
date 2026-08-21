@@ -25,9 +25,13 @@ def load_plugin_module():
 class FakeContext:
     def __init__(self):
         self.tools = {}
+        self.subagent_lifecycle = object()
 
     def register_tool(self, *, name, toolset, schema, handler):
         self.tools[name] = {"toolset": toolset, "schema": schema, "handler": handler}
+
+    def get_config(self, key, default=None):
+        return default
 
 
 def valid_payload() -> dict:
@@ -52,28 +56,36 @@ def valid_payload() -> dict:
     }
 
 
-def test_plugin_registers_only_phase0_read_only_tools():
+def test_plugin_registers_phase0_compatibility_and_bounded_phase1_tools():
     plugin = load_plugin_module()
     ctx = FakeContext()
 
     plugin.register(ctx)
 
-    assert set(ctx.tools) == {"avo_phase0_info", "avo_validate_run_spec"}
+    assert set(ctx.tools) == {
+        "avo_phase0_info",
+        "avo_validate_run_spec",
+        "avo_create_run",
+        "avo_step",
+        "avo_status",
+        "avo_cancel",
+        "avo_lineage",
+    }
     assert {tool["toolset"] for tool in ctx.tools.values()} == {"agentic-variation"}
     assert all(tool["schema"]["name"] == name for name, tool in ctx.tools.items())
 
 
-def test_info_handler_declares_no_execution_or_model_access():
+def test_info_handler_reports_phase1_backend_gate_is_off_by_default():
     plugin = load_plugin_module()
     ctx = FakeContext()
     plugin.register(ctx)
 
     result = json.loads(ctx.tools["avo_phase0_info"]["handler"]({}))
 
-    assert result["phase"] == 0
+    assert result["phase"] == 1
     assert result["execution_enabled"] is False
-    assert result["model_calls_enabled"] is False
-    assert result["schema_version"] == 1
+    assert result["single_step_only"] is True
+    assert result["schema_version"] == 2
 
 
 def test_validate_handler_returns_stable_identity_for_valid_payload():

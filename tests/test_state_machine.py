@@ -137,3 +137,27 @@ def test_non_finite_cost_delta_is_rejected_before_state_change():
     for invalid in (float("nan"), float("inf"), float("-inf")):
         with pytest.raises(TransitionError, match="cost_delta"):
             apply_transition(state, "child_failed", spec, cost_delta=invalid)
+    with pytest.raises(TransitionError, match="cost_delta"):
+        apply_transition(state, "child_failed", spec, cost_delta=True)
+
+
+def test_accumulated_cost_overflow_is_rejected_before_persistence():
+    spec = run_spec(max_cost_usd=1.7e308, max_steps=3)
+    state = approved_state(spec)
+    state = apply_transition(state, "start_step", spec)
+    state = apply_transition(state, "child_failed", spec, cost_delta=1e308)
+    state = apply_transition(state, "start_step", spec)
+
+    with pytest.raises(TransitionError, match="accumulated cost"):
+        apply_transition(state, "child_failed", spec, cost_delta=1e308)
+
+
+def test_eligible_final_step_finishes_as_succeeded():
+    spec = run_spec(max_steps=1)
+    state = approved_state(spec)
+    state = apply_transition(state, "start_step", spec)
+    state = apply_transition(state, "candidate_ready", spec)
+    state = apply_transition(state, "evaluation_eligible", spec, candidate_hash=HEX_B)
+
+    assert state.status == "succeeded"
+    assert state.best_candidate_hash == HEX_B

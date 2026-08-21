@@ -40,7 +40,7 @@ def test_desktop_configuration_options_are_persisted_in_plugin_storage():
         assert f"'{key}'" in source
     assert "storage.get" in source
     assert "storage.set" in source
-    assert "Phase 0 does not execute experiments" in source
+    assert "backend-owned in config.yaml" in source
 
 
 def test_desktop_plugin_uses_only_supported_imports_and_theme_safe_styles():
@@ -55,6 +55,8 @@ def test_native_manifest_declares_matching_configurable_defaults():
     manifest = (ROOT / "plugin.yaml").read_text(encoding="utf-8")
 
     assert "config_schema:" in manifest
+    assert re.search(r"^  phase1_enabled:\s*", manifest, re.MULTILINE)
+    assert re.search(r"^  phase1_wait_seconds:\s*", manifest, re.MULTILINE)
     for key in (
         "default_max_steps",
         "default_max_wall_seconds",

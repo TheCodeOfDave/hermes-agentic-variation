@@ -78,6 +78,9 @@ def test_run_spec_rejects_invalid_security_and_budget_fields():
             make_run_spec(max_cost_usd=invalid)
         with pytest.raises(ContractValidationError, match="evaluator_config"):
             make_run_spec(evaluator_config={"threshold": invalid})
+    for field in ("max_steps", "max_wall_seconds", "max_cost_usd", "no_progress_limit"):
+        with pytest.raises(ContractValidationError, match=field):
+            make_run_spec(**{field: True})
 
 
 def test_candidate_requires_content_hashes_and_relative_changed_paths():
@@ -137,6 +140,19 @@ def test_evaluation_result_rejects_non_finite_scores():
                 reason="Non-finite values are not evidence.",
                 evidence_hashes=(HEX_A,),
             )
+    with pytest.raises(ContractValidationError, match="scores"):
+        EvaluationResult(
+            evaluation_id="eval-bool",
+            candidate_hash=HEX_A,
+            run_spec_hash=HEX_B,
+            evaluator_id="fixture.runtime.v1",
+            correctness_passed=True,
+            scores={"runtime_ms": True},
+            baseline_scores={"runtime_ms": 10.0},
+            eligible=False,
+            reason="Boolean is not a score.",
+            evidence_hashes=(HEX_A,),
+        )
 
 
 def test_supervisor_advice_is_bounded_to_three_nonempty_directions():

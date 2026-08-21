@@ -96,7 +96,7 @@ function ConfigurationPage({ storage }) {
           jsx('p', {
             className: 'max-w-3xl text-sm text-(--ui-text-tertiary)',
             children:
-              'Configure planning defaults for future experiment phases. Phase 0 does not execute experiments, call models, launch subagents, run commands, or access the network.'
+              'Configure inert planning defaults. The executable Phase 1 gate is backend-owned in config.yaml and cannot be enabled from Desktop. Phase 1 launches one child with only the in-memory todo toolset and never grants file, command, repository, credential, or network authority.'
           })
         ]
       }),

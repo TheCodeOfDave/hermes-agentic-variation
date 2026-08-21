@@ -43,7 +43,32 @@ def test_store_creates_schema_and_round_trips_immutable_run(tmp_path):
     assert created.status == "created"
     assert loaded_spec.identity == spec.identity
     assert loaded_state == created
-    assert store.schema_version() == 1
+    assert store.schema_version() == 2
+
+
+def test_store_migrates_phase0_schema_metadata_and_adds_phase1_tables(tmp_path):
+    database = tmp_path / "legacy.db"
+    connection = sqlite3.connect(database)
+    connection.executescript(
+        """
+        CREATE TABLE schema_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        INSERT INTO schema_metadata(key, value) VALUES ('schema_version', '1');
+        """
+    )
+    connection.close()
+
+    store = RunStore(database)
+
+    assert store.schema_version() == 2
+    check = sqlite3.connect(database)
+    tables = {
+        row[0]
+        for row in check.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('candidates','evaluations')"
+        )
+    }
+    check.close()
+    assert tables == {"candidates", "evaluations"}
 
 
 def test_store_rejects_duplicate_run_id(tmp_path):

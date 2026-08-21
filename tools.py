@@ -4,26 +4,32 @@ import json
 from typing import Any
 
 try:
+    from .controller import Phase1DisabledError
     from .contracts import ContractValidationError, RunSpec
-    from .storage import _SCHEMA_VERSION
+    from .state_machine import TransitionError
+    from .storage import StorageConflictError, _SCHEMA_VERSION
 except ImportError:  # Direct module execution in local tests.
+    from controller import Phase1DisabledError
     from contracts import ContractValidationError, RunSpec
-    from storage import _SCHEMA_VERSION
+    from state_machine import TransitionError
+    from storage import StorageConflictError, _SCHEMA_VERSION
 
 _TUPLE_FIELDS = ("exclusions", "correctness_predicates", "score_keys", "allowed_toolsets")
 
 
-def avo_phase0_info(args: dict[str, Any], **kwargs: Any) -> str:
+def avo_phase0_info(
+    args: dict[str, Any], *, phase1_enabled: bool = False, **kwargs: Any
+) -> str:
     del args, kwargs
     return json.dumps(
         {
             "plugin": "agentic-variation",
-            "version": "0.1.0",
-            "phase": 0,
+            "version": "0.2.0",
+            "phase": 1,
             "schema_version": _SCHEMA_VERSION,
-            "execution_enabled": False,
-            "model_calls_enabled": False,
-            "subagent_launches_enabled": False,
+            "execution_enabled": phase1_enabled,
+            "single_step_only": True,
+            "child_toolsets": ["todo"],
             "network_access_enabled": False,
         },
         sort_keys=True,
@@ -53,3 +59,39 @@ def avo_validate_run_spec(args: dict[str, Any], **kwargs: Any) -> str:
             "error": str(exc)[:300],
         }
     return json.dumps(result, sort_keys=True)
+
+
+def make_phase1_handlers(controller_factory):
+    def invoke(method_name: str, args: dict[str, Any]) -> str:
+        try:
+            controller = controller_factory()
+            method = getattr(controller, method_name)
+            if method_name == "create_run":
+                result = method(
+                    objective=args.get("objective", ""),
+                    approval_receipt=args.get("approval_receipt", ""),
+                )
+            else:
+                result = method(args.get("run_id", ""))
+            return json.dumps(result, sort_keys=True)
+        except (
+            Phase1DisabledError,
+            ContractValidationError,
+            StorageConflictError,
+            TransitionError,
+            KeyError,
+            TypeError,
+            ValueError,
+        ) as exc:
+            return json.dumps(
+                {"ok": False, "error_type": type(exc).__name__, "error": str(exc)[:500]},
+                sort_keys=True,
+            )
+
+    return {
+        "avo_create_run": lambda args, **kwargs: invoke("create_run", args),
+        "avo_step": lambda args, **kwargs: invoke("step", args),
+        "avo_status": lambda args, **kwargs: invoke("status", args),
+        "avo_cancel": lambda args, **kwargs: invoke("cancel", args),
+        "avo_lineage": lambda args, **kwargs: invoke("lineage", args),
+    }

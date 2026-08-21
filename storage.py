@@ -14,7 +14,7 @@ except ImportError:  # Direct module execution in local tests.
     from contracts import RunSpec
     from state_machine import RunState, apply_transition
 
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 
 
 class StorageConflictError(RuntimeError):
@@ -22,7 +22,13 @@ class StorageConflictError(RuntimeError):
 
 
 def _canonical_json(value: dict[str, Any]) -> str:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    )
 
 
 def _state_json(state: RunState) -> str:
@@ -71,7 +77,9 @@ class RunStore:
                     value TEXT NOT NULL
                 );
                 INSERT OR IGNORE INTO schema_metadata(key, value)
-                    VALUES ('schema_version', '1');
+                    VALUES ('schema_version', '2');
+                UPDATE schema_metadata SET value = '2'
+                    WHERE key = 'schema_version' AND CAST(value AS INTEGER) < 2;
 
                 CREATE TABLE IF NOT EXISTS runs (
                     run_id TEXT PRIMARY KEY,
@@ -87,6 +95,19 @@ class RunStore:
                     revision INTEGER NOT NULL,
                     state_hash TEXT NOT NULL,
                     payload_json TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS candidates (
+                    candidate_hash TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL REFERENCES runs(run_id),
+                    candidate_json TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS evaluations (
+                    evaluation_hash TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL REFERENCES runs(run_id),
+                    candidate_hash TEXT NOT NULL REFERENCES candidates(candidate_hash),
+                    evaluation_json TEXT NOT NULL
                 );
 
                 CREATE TRIGGER IF NOT EXISTS run_events_no_update
@@ -206,6 +227,77 @@ class RunStore:
             }
             for row in rows
         ]
+
+    def record_observation(self, run_id: str, event: str, payload: dict[str, Any]) -> None:
+        """Append non-transition evidence without claiming a state change."""
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT state_json FROM runs WHERE run_id = ?", (run_id,)
+            ).fetchone()
+            if row is None:
+                raise KeyError(run_id)
+            self._append_event(
+                connection,
+                run_id=run_id,
+                event=event,
+                state=_state_from_json(row["state_json"]),
+                payload=payload,
+            )
+
+    def record_candidate(self, run_id: str, candidate: Any) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT INTO candidates(candidate_hash, run_id, candidate_json) VALUES (?, ?, ?)",
+                (candidate.identity, run_id, _canonical_json(candidate.to_dict())),
+            )
+
+    def record_evaluation(self, run_id: str, evaluation: Any) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT INTO evaluations(evaluation_hash, run_id, candidate_hash, evaluation_json) "
+                "VALUES (?, ?, ?, ?)",
+                (
+                    evaluation.identity,
+                    run_id,
+                    evaluation.candidate_hash,
+                    _canonical_json(evaluation.to_dict()),
+                ),
+            )
+
+    def record_attempt(self, run_id: str, candidate: Any, evaluation: Any) -> None:
+        """Persist candidate and its evaluation in one SQLite transaction."""
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "INSERT INTO candidates(candidate_hash, run_id, candidate_json) VALUES (?, ?, ?)",
+                (candidate.identity, run_id, _canonical_json(candidate.to_dict())),
+            )
+            connection.execute(
+                "INSERT INTO evaluations(evaluation_hash, run_id, candidate_hash, evaluation_json) "
+                "VALUES (?, ?, ?, ?)",
+                (
+                    evaluation.identity,
+                    run_id,
+                    candidate.identity,
+                    _canonical_json(evaluation.to_dict()),
+                ),
+            )
+
+    def lineage(self, run_id: str) -> dict[str, list[dict[str, Any]]]:
+        with self._connect() as connection:
+            candidates = connection.execute(
+                "SELECT candidate_json FROM candidates WHERE run_id = ? ORDER BY rowid",
+                (run_id,),
+            ).fetchall()
+            evaluations = connection.execute(
+                "SELECT evaluation_json FROM evaluations WHERE run_id = ? ORDER BY rowid",
+                (run_id,),
+            ).fetchall()
+        return {
+            "candidates": [json.loads(row["candidate_json"]) for row in candidates],
+            "evaluations": [json.loads(row["evaluation_json"]) for row in evaluations],
+        }
 
     @staticmethod
     def _append_event(

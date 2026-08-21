@@ -162,3 +162,10 @@ def test_fixture_evaluator_rejects_non_finite_candidate_or_baseline_scores():
                 baseline_scores={"runtime_ms": invalid, "allocations": 10.0},
                 outcome=outcome(),
             )
+    with pytest.raises(ContractValidationError, match="finite"):
+        evaluator.evaluate(
+            run_spec,
+            candidate(run_spec),
+            baseline_scores={"runtime_ms": 10.0, "allocations": 10.0},
+            outcome=outcome(scores={"runtime_ms": True, "allocations": 10.0}),
+        )

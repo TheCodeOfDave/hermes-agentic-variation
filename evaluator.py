@@ -52,7 +52,9 @@ class FixtureEvaluator:
             raise ContractValidationError("score_keys are missing from candidate or baseline scores")
         for mapping in (outcome.scores, baseline_scores):
             if any(
-                not isinstance(mapping[key], (int, float)) or not math.isfinite(mapping[key])
+                isinstance(mapping[key], bool)
+                or not isinstance(mapping[key], (int, float))
+                or not math.isfinite(mapping[key])
                 for key in required_scores
             ):
                 raise ContractValidationError("score_keys must resolve to finite numeric values")

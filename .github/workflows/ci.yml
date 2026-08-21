@@ -35,3 +35,5 @@ jobs:
         run: ruff check .
       - name: Check Desktop companion syntax
         run: node --check desktop/plugin.js
+      - name: Run Desktop companion behavioral harness
+        run: node --experimental-vm-modules tests/desktop_harness.mjs

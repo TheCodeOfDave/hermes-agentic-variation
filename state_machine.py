@@ -65,12 +65,16 @@ def _next_after_attempt(
 ) -> RunState:
     steps = state.steps_used + 1
     cost = state.cost_usd + cost_delta
+    if not math.isfinite(cost):
+        raise TransitionError("accumulated cost must remain finite")
     no_progress = 0 if progressed else state.consecutive_no_progress + 1
 
     if candidate_hash is not None and _HEX_64.fullmatch(candidate_hash) is None:
         raise TransitionError("candidate_hash must be a lowercase SHA-256 digest")
 
-    if steps >= spec.max_steps or cost >= spec.max_cost_usd:
+    if progressed and (steps >= spec.max_steps or cost >= spec.max_cost_usd):
+        status = "succeeded"
+    elif steps >= spec.max_steps or cost >= spec.max_cost_usd:
         status = "budget_exhausted"
     elif no_progress >= spec.no_progress_limit:
         status = "supervision_required"
@@ -102,7 +106,8 @@ def apply_transition(
     if state.is_terminal:
         raise TransitionError(f"terminal run cannot accept {event}")
     if (
-        not isinstance(cost_delta, (int, float))
+        isinstance(cost_delta, bool)
+        or not isinstance(cost_delta, (int, float))
         or not math.isfinite(cost_delta)
         or cost_delta < 0
     ):

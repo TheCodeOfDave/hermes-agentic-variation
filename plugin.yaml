@@ -1,13 +1,21 @@
 manifest_version: 2
 api_version: 1
 name: agentic-variation
-version: 0.1.0
-description: AVO-inspired deterministic contracts and state-machine foundation for Hermes Agent.
+version: 0.2.0
+description: AVO-inspired bounded single-step experiment controller for Hermes Agent.
 author: TheCodeOfDave
 license: MIT
 homepage: https://github.com/TheCodeOfDave/hermes-agentic-variation
-tags: [agents, experimentation, evolutionary-search, phase-0]
+tags: [agents, experimentation, evolutionary-search, phase-1]
 config_schema:
+  phase1_enabled:
+    type: bool
+    default: false
+    description: Backend authority gate for one built-in no-tool Phase 1 fixture step.
+  phase1_wait_seconds:
+    type: int
+    default: 120
+    description: Bounded wait for the single Phase 1 child; valid range 5-180 seconds.
   default_max_steps:
     type: int
     default: 5
@@ -39,3 +47,8 @@ config_schema:
 provides_tools:
   - avo_phase0_info
   - avo_validate_run_spec
+  - avo_create_run
+  - avo_step
+  - avo_status
+  - avo_cancel
+  - avo_lineage

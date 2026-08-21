@@ -119,17 +119,18 @@ class RunSpec(ContractMixin):
             raise ContractValidationError("comparison must be minimize, maximize, or pareto")
         if self.network_policy not in {"disabled", "allowlist"}:
             raise ContractValidationError("network_policy must be disabled or allowlist")
-        if not isinstance(self.max_steps, int) or self.max_steps <= 0:
+        if type(self.max_steps) is not int or self.max_steps <= 0:
             raise ContractValidationError("max_steps must be a positive integer")
-        if not isinstance(self.max_wall_seconds, int) or self.max_wall_seconds <= 0:
+        if type(self.max_wall_seconds) is not int or self.max_wall_seconds <= 0:
             raise ContractValidationError("max_wall_seconds must be a positive integer")
         if (
-            not isinstance(self.max_cost_usd, (int, float))
+            isinstance(self.max_cost_usd, bool)
+            or not isinstance(self.max_cost_usd, (int, float))
             or not math.isfinite(self.max_cost_usd)
             or self.max_cost_usd < 0
         ):
             raise ContractValidationError("max_cost_usd must be finite and non-negative")
-        if not isinstance(self.no_progress_limit, int) or self.no_progress_limit <= 0:
+        if type(self.no_progress_limit) is not int or self.no_progress_limit <= 0:
             raise ContractValidationError("no_progress_limit must be a positive integer")
         object.__setattr__(self, "evaluator_config", _freeze_mapping("evaluator_config", self.evaluator_config))
 
@@ -188,7 +189,9 @@ class EvaluationResult(ContractMixin):
         for name in ("scores", "baseline_scores"):
             mapping = _freeze_mapping(name, getattr(self, name))
             if not mapping or any(
-                not isinstance(value, (int, float)) or not math.isfinite(value)
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
                 for value in mapping.values()
             ):
                 raise ContractValidationError(f"{name} must contain finite numeric scores")
@@ -244,7 +247,8 @@ class TerminalReceipt(ContractMixin):
         if not isinstance(self.steps_used, int) or self.steps_used < 0:
             raise ContractValidationError("steps_used must be non-negative")
         if (
-            not isinstance(self.cost_usd, (int, float))
+            isinstance(self.cost_usd, bool)
+            or not isinstance(self.cost_usd, (int, float))
             or not math.isfinite(self.cost_usd)
             or self.cost_usd < 0
         ):
