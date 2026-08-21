@@ -81,22 +81,36 @@ Desktop settings cannot enable `phase1_enabled`. This prevents renderer-local pr
 
 ## Phase 1 acceptance matrix
 
-- [ ] Phase 0 suite remains green.
-- [ ] Boolean and accumulated-cost regression tests pass.
-- [ ] Storage schema upgrades to version 2.
-- [ ] Plugin Doctor registers exactly seven tools and zero hooks.
-- [ ] Desktop syntax and behavioral harness pass.
-- [ ] Plugin remains disabled by default.
-- [ ] With backend Phase 1 gate off, run creation fails closed.
-- [ ] In Serenity Docker, one approved run launches exactly one child with only `todo`.
-- [ ] Live child result is deterministically evaluated and terminal.
-- [ ] Malformed and unlisted child outputs produce no candidate.
-- [ ] Lifecycle launch failure closes the run instead of stranding `running`.
-- [ ] Child API-call count is preserved in the evidence ledger.
-- [ ] Final Serenity plugin state is disabled.
-- [ ] Forge review approves exact bytes.
-- [ ] Terra QA passes exact bytes and Docker evidence.
-- [ ] GitHub CI passes Python 3.11–3.13, Ruff, and both Desktop gates.
+- [x] Phase 0 suite remains green.
+- [x] Boolean and accumulated-cost regression tests pass.
+- [x] Storage schema upgrades to version 2.
+- [x] Plugin Doctor registers exactly seven tools and zero hooks.
+- [x] Desktop syntax and behavioral harness pass.
+- [x] Plugin remains disabled by default.
+- [x] With backend Phase 1 gate off, run creation fails closed.
+- [x] In Serenity Docker, one approved run launches exactly one child with only `todo`.
+- [x] Live child result is deterministically evaluated and terminal.
+- [x] Malformed and unlisted child outputs produce no candidate.
+- [x] Lifecycle launch failure closes the run instead of stranding `running`.
+- [x] Child API-call count is preserved in the evidence ledger.
+- [x] Final Serenity plugin state is disabled.
+- [x] Forge review approves exact bytes.
+- [x] Terra QA passes exact bytes and Docker evidence.
+- [x] GitHub CI passes Python 3.11–3.13, Ruff, and both Desktop gates.
+
+## Acceptance receipt — 2026-08-21
+
+- Accepted implementation commit: `4bc6554512ad0beb293adb4a435417f02919c831`
+- Parent: `d1bd4c61289cbf6e91a469743f281184df7e6e6a`
+- Implementation diff SHA-256: `5570f59ff185b907f873e011a3e047bf898ba7aae9a3947ca210c53f75b8560b`
+- Local and Serenity suites: 51 tests passed; Ruff, Node syntax, Desktop VM harness, and Plugin Doctor passed.
+- Forge/GLM review: `APPROVE` on exact bytes.
+- Verifier/Terra acceptance: `PASS` on exact commit and Serenity evidence.
+- Serenity: Hermes v0.20.5 upstream `b2c4f1f3`; plugin 0.2.0 installed and left disabled.
+- Live run: `phase1-0ae859364db01e67`; one child; `memoized_lookup`; operations `5.0`; status `succeeded`; one candidate; one eligible evaluation; one child API call.
+- Final backend state: `phase1_enabled=false`; plugin disabled; plugin toolset removed from CLI; API healthy.
+- GitHub Actions run: https://github.com/TheCodeOfDave/hermes-agentic-variation/actions/runs/32508644762 — PASS on Python 3.11, 3.12, and 3.13.
+- Known upstream residual: the CLI emitted an early unknown-toolset warning and exited `134` during Honcho teardown after returning the successful final result. The authoritative SQLite result and final safe state remained consistent.
 
 ## Explicitly deferred
 
