@@ -145,26 +145,26 @@ Backend settings default closed:
 
 ## Acceptance
 
-- [ ] Phase 0–3 suite remains green.
-- [ ] Strict patch parser accepts one valid patch and rejects every prohibited class.
-- [ ] Sandbox command exactly matches the documented fixed policy.
-- [ ] Image is digest-pinned and `--pull=never`.
-- [ ] Network is none; root is read-only; capabilities are dropped; no-new-privileges is set.
-- [ ] Memory, CPU, PID, tmpfs, user, and timeout ceilings are enforced.
-- [ ] Baseline, patch, and runner mounts are read-only.
-- [ ] Sandbox independently revalidates patch and fixed tests.
-- [ ] Controller validates output size, schema, hashes, and source bytes before export.
-- [ ] Baseline repository is unchanged; candidate artifact is retained separately.
-- [ ] Candidate/evaluation/sandbox receipt are atomic and append-only.
-- [ ] Reconciliation never reruns child, sandbox, patch, or tests.
-- [ ] Cross-phase tools reject Phase 4 IDs before effects.
-- [ ] Plugin Doctor registers nineteen tools and zero hooks.
-- [ ] Desktop cannot enable backend execution.
-- [ ] Local Docker canary passes against the pinned image.
-- [ ] Exact candidate passes direct Serenity-host Docker canary without installing a host service or mounting Docker into `hermes-owner`.
-- [ ] Installed Serenity plugin remains disabled and Phase 1–4 gates false.
-- [ ] Forge approves exact bytes; Terra independently passes exact bytes and evidence.
-- [ ] GitHub CI passes Python 3.11–3.13 and non-Docker gates.
+- [x] Phase 0–3 suite remains green.
+- [x] Strict patch parser accepts one valid patch and rejects every prohibited class.
+- [x] Sandbox command exactly matches the documented fixed policy.
+- [x] Image is digest-pinned and `--pull=never`.
+- [x] Network is none; root is read-only; capabilities are dropped; no-new-privileges is set.
+- [x] Memory, CPU, PID, tmpfs, user, and timeout ceilings are enforced.
+- [x] Baseline, patch, and runner mounts are read-only.
+- [x] Sandbox independently revalidates patch and fixed tests.
+- [x] Controller validates output size, schema, hashes, and source bytes before export.
+- [x] Baseline repository is unchanged; candidate artifact is retained separately.
+- [x] Candidate/evaluation/sandbox receipt are atomic and append-only.
+- [x] Reconciliation never reruns child, sandbox, patch, or tests.
+- [x] Cross-phase tools reject Phase 4 IDs before effects.
+- [x] Plugin Doctor registers nineteen tools and zero hooks.
+- [x] Desktop cannot enable backend execution.
+- [x] Local Docker canary passes against the pinned image.
+- [x] Exact candidate passes direct Serenity-host Docker canary without installing a host service or mounting Docker into `hermes-owner`.
+- [x] Installed Serenity plugin remains disabled and Phase 1–4 gates false.
+- [x] Forge approves exact bytes; Terra independently passes exact bytes and evidence.
+- [x] GitHub CI passes Python 3.11–3.13 and non-Docker gates.
 
 ## Explicitly deferred
 
@@ -176,3 +176,22 @@ Backend settings default closed:
 - cleanup/deletion;
 - autonomous recurrence;
 - Windows container execution inside CI (adapter contract is tested; local Docker canary is separate).
+
+## Acceptance evidence — 2026-08-22
+
+Phase 4 implementation was accepted and delivered as commit `c203fa9d78a0f376f28cc3a99d054e83adace380` with parent `65a51544afbab10546be2d6d81d0273140ffc77c` and binary diff SHA-256 `ada89f7d72ba84af8fac3f1720040217a82a2a512a796ce37fec0c1e40fc457f`.
+
+Verification receipts:
+
+- Windows 11 guest: 127 tests passed; Ruff, Node syntax, Desktop harness, compileall, and fresh wheel build passed.
+- Clean wheel SHA-256: `e08ab112950ac80c5ee85167e8b7feddfeb4f7ea1baeaffd541c415b80a2dd65`; 20 entries and no bytecode/cache files.
+- Real Docker canary passed with the pinned image and documented network/capability/resource policy.
+- Independent GLM technical review: `APPROVE` (`20260822_163316_09b44b`).
+- Independent Terra QA: `QA_PASS` (`20260822_171754_68399d`).
+- Commit privacy gates: `privacy_scan=PASS staged_files=23` and `commit_message_privacy_scan=PASS`; no bypass used.
+- Serenity Plugin Doctor: version 0.5.0, 19 tools, 0 hooks.
+- Serenity direct-host Docker canary: `SERENITY_PASS`; plugin remained disabled and Phase 1–4 gates were verified false.
+- GitHub Actions run `32602591480`: success on exact implementation commit.
+- Non-force push verified public `main` at the exact implementation SHA.
+
+The former Windows 10 MSIX VM no longer exists. Current Windows development, testing, and MSIX work uses the Windows 11 development VM when needed; Docker remains the isolated container lane, and `dc-workstation` remains orchestration-only.
