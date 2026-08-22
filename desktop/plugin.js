@@ -96,7 +96,7 @@ function ConfigurationPage({ storage }) {
           jsx('p', {
             className: 'max-w-3xl text-sm text-(--ui-text-tertiary)',
             children:
-              'Configure inert planning defaults. Phase 3 execution is backend-owned in config.yaml and cannot be enabled from Desktop. The child remains todo-only; the controller may mutate only trusted templates inside a plugin-owned disposable repository and cannot commit, push, use credentials, network, deploy, or delete.'
+              'Configure inert planning defaults. Phase 4 execution is backend-owned in config.yaml and cannot be enabled from Desktop. The child remains todo-only; one bounded patch may run only in a digest-pinned Docker sandbox with no network, read-only root, dropped capabilities, resource ceilings, and no commit, push, credentials, deployment, cleanup, or deletion.'
           })
         ]
       }),

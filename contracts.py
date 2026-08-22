@@ -318,6 +318,73 @@ class MutationReceipt(ContractMixin):
 
 
 @dataclass(frozen=True)
+class SandboxReceipt(ContractMixin):
+    contract_version: ClassVar[str] = "avo.sandbox-receipt.v1"
+    COMMAND_ID: ClassVar[str] = "phase4.python-unittest.v1"
+
+    receipt_id: str
+    run_spec_hash: str
+    candidate_hash: str
+    evaluation_hash: str
+    image: str
+    runner_hash: str
+    baseline_tree_hash: str
+    patch_hash: str
+    output_tree_hash: str
+    output_source_hash: str
+    policy_hash: str
+    command_id: str
+    exit_code: int
+    tests_passed: bool
+    stdout_hash: str
+    stderr_hash: str
+    artifact_relative_path: str
+    network_policy: str
+    artifact_retained: bool
+    cleanup_status: str
+
+    def __post_init__(self) -> None:
+        _require_text("receipt_id", self.receipt_id)
+        for name in (
+            "run_spec_hash",
+            "candidate_hash",
+            "evaluation_hash",
+            "runner_hash",
+            "baseline_tree_hash",
+            "patch_hash",
+            "output_tree_hash",
+            "output_source_hash",
+            "policy_hash",
+            "stdout_hash",
+            "stderr_hash",
+        ):
+            _require_digest(name, getattr(self, name))
+        if re.fullmatch(r"[^@]+@sha256:[0-9a-f]{64}", self.image) is None:
+            raise ContractValidationError("image must be pinned by sha256 digest")
+        if self.command_id != self.COMMAND_ID:
+            raise ContractValidationError("command_id must be the fixed Phase 4 command")
+        if type(self.exit_code) is not int or not isinstance(self.tests_passed, bool):
+            raise ContractValidationError("sandbox test result types are invalid")
+        if self.tests_passed != (self.exit_code == 0):
+            raise ContractValidationError("tests_passed must agree with exit_code")
+        normalized = self.artifact_relative_path.replace("\\", "/")
+        path = PurePosixPath(normalized)
+        if (
+            path.is_absolute()
+            or re.match(r"^[A-Za-z]:", normalized)
+            or ".." in path.parts
+            or len(path.parts) != 3
+            or path.parts[0] != "phase4-artifacts"
+            or path.name != "calculator.py"
+        ):
+            raise ContractValidationError("artifact_relative_path is invalid")
+        if self.network_policy != "none":
+            raise ContractValidationError("network_policy must be none")
+        if self.artifact_retained is not True or self.cleanup_status != "retained":
+            raise ContractValidationError("Phase 4 artifact must remain retained")
+
+
+@dataclass(frozen=True)
 class TerminalReceipt(ContractMixin):
     contract_version: ClassVar[str] = "avo.terminal-receipt.v1"
     TERMINAL_STATES: ClassVar[frozenset[str]] = frozenset(

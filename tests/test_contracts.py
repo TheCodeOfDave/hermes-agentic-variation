@@ -11,6 +11,7 @@ from contracts import (
     EvaluationResult,
     MutationReceipt,
     RunSpec,
+    SandboxReceipt,
     SupervisorAdvice,
     TerminalReceipt,
 )
@@ -295,3 +296,35 @@ def test_mutation_receipt_binds_fixed_command_and_retained_repository():
         MutationReceipt(**{**receipt.__dict__, "command_id": "shell"})
     with pytest.raises(ContractValidationError, match="changed_paths"):
         MutationReceipt(**{**receipt.__dict__, "changed_paths": ("../escape",)})
+
+
+def test_sandbox_receipt_binds_pinned_policy_and_retained_artifact():
+    receipt = SandboxReceipt(
+        receipt_id="sandbox-1",
+        run_spec_hash=HEX_A,
+        candidate_hash=HEX_B,
+        evaluation_hash=HEX_A,
+        image="python:3.13-alpine@sha256:" + "a" * 64,
+        runner_hash=HEX_A,
+        baseline_tree_hash=HEX_B,
+        patch_hash=HEX_A,
+        output_tree_hash=HEX_B,
+        output_source_hash=HEX_A,
+        policy_hash=HEX_B,
+        command_id="phase4.python-unittest.v1",
+        exit_code=0,
+        tests_passed=True,
+        stdout_hash=HEX_A,
+        stderr_hash=HEX_B,
+        artifact_relative_path="phase4-artifacts/phase4-abcdef/calculator.py",
+        network_policy="none",
+        artifact_retained=True,
+        cleanup_status="retained",
+    )
+
+    assert receipt.contract_version == "avo.sandbox-receipt.v1"
+    assert receipt.identity
+    with pytest.raises(ContractValidationError, match="artifact_relative_path"):
+        SandboxReceipt(**{**receipt.__dict__, "artifact_relative_path": "../escape.py"})
+    with pytest.raises(ContractValidationError, match="image"):
+        SandboxReceipt(**{**receipt.__dict__, "image": "python:latest"})

@@ -92,3 +92,18 @@ AVO_PHASE3_RECEIPT = _run_id_schema(
 AVO_PHASE3_RECONCILE = _run_id_schema(
     "avo_phase3_reconcile", "Reconcile interrupted Phase 3 state without rerunning effects."
 )
+
+AVO_CREATE_PHASE4_RUN = {
+    **AVO_CREATE_RUN,
+    "name": "avo_create_phase4_run",
+    "description": "Create one pinned, networkless Phase 4 patch-sandbox run.",
+}
+AVO_PATCH_PHASE4 = _run_id_schema(
+    "avo_patch_phase4", "Run one bounded model-authored patch in the pinned Docker sandbox."
+)
+AVO_PHASE4_RECEIPT = _run_id_schema(
+    "avo_phase4_receipt", "Read the append-only Phase 4 sandbox receipt."
+)
+AVO_PHASE4_RECONCILE = _run_id_schema(
+    "avo_phase4_reconcile", "Reconcile Phase 4 state without rerunning sandbox effects."
+)

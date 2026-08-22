@@ -4,7 +4,13 @@ import sqlite3
 
 import pytest
 
-from contracts import ContinuationMemory, MutationReceipt, RunSpec, SupervisorAdvice
+from contracts import (
+    ContinuationMemory,
+    MutationReceipt,
+    RunSpec,
+    SandboxReceipt,
+    SupervisorAdvice,
+)
 from state_machine import TransitionError
 from storage import RunStore, StorageConflictError
 
@@ -43,7 +49,7 @@ def test_store_creates_schema_and_round_trips_immutable_run(tmp_path):
     assert created.status == "created"
     assert loaded_spec.identity == spec.identity
     assert loaded_state == created
-    assert store.schema_version() == 4
+    assert store.schema_version() == 5
 
 
 def test_store_migrates_phase0_schema_metadata_and_adds_phase1_tables(tmp_path):
@@ -59,7 +65,7 @@ def test_store_migrates_phase0_schema_metadata_and_adds_phase1_tables(tmp_path):
 
     store = RunStore(database)
 
-    assert store.schema_version() == 4
+    assert store.schema_version() == 5
     check = sqlite3.connect(database)
     tables = {
         row[0]
@@ -121,7 +127,7 @@ def test_store_migrates_populated_v2_without_changing_existing_rows(tmp_path):
     }
     check.close()
 
-    assert store.schema_version() == 4
+    assert store.schema_version() == 5
     assert counts == {"runs": 1, "run_events": 1, "candidates": 1, "evaluations": 1}
     assert phase2_tables == {"continuation_memory", "supervisor_advice"}
 
@@ -213,7 +219,45 @@ def test_store_records_append_only_mutation_receipt(tmp_path):
     connection.close()
 
 
-def test_store_migrates_populated_v3_memory_and_advice_to_v4(tmp_path):
+def test_store_records_append_only_sandbox_receipt(tmp_path):
+    store = RunStore(tmp_path / "runs.db")
+    spec = run_spec()
+    store.create_run(spec)
+    receipt = SandboxReceipt(
+        receipt_id="sandbox-1",
+        run_spec_hash=spec.identity,
+        candidate_hash="b" * 64,
+        evaluation_hash="c" * 64,
+        image="python:3.13-alpine@sha256:" + "d" * 64,
+        runner_hash="e" * 64,
+        baseline_tree_hash="f" * 64,
+        patch_hash="a" * 64,
+        output_tree_hash="b" * 64,
+        output_source_hash="c" * 64,
+        policy_hash="d" * 64,
+        command_id="phase4.python-unittest.v1",
+        exit_code=0,
+        tests_passed=True,
+        stdout_hash="e" * 64,
+        stderr_hash="f" * 64,
+        artifact_relative_path="phase4-artifacts/phase4-abcdef/calculator.py",
+        network_policy="none",
+        artifact_retained=True,
+        cleanup_status="retained",
+    )
+
+    store.record_sandbox_receipt(spec.run_id, receipt)
+
+    assert RunStore(store.database_path).sandbox_receipts(spec.run_id) == [receipt.to_dict()]
+    connection = sqlite3.connect(store.database_path)
+    with pytest.raises(sqlite3.DatabaseError, match="append-only"):
+        connection.execute("UPDATE sandbox_receipts SET receipt_json='{}'")
+    with pytest.raises(sqlite3.DatabaseError, match="append-only"):
+        connection.execute("DELETE FROM sandbox_receipts")
+    connection.close()
+
+
+def test_store_migrates_populated_v3_memory_and_advice_to_v5(tmp_path):
     database = tmp_path / "v3.db"
     store = RunStore(database)
     spec = run_spec()
@@ -235,15 +279,19 @@ def test_store_migrates_populated_v3_memory_and_advice_to_v4(tmp_path):
 
     migrated = RunStore(database)
 
-    assert migrated.schema_version() == 4
+    assert migrated.schema_version() == 5
     assert migrated.load_memory(spec.run_id) == continuation(spec)
     assert migrated.supervisor_advice(spec.run_id) == [advice.to_dict()]
     check = sqlite3.connect(database)
-    exists = check.execute(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='mutation_receipts'"
-    ).fetchone()[0]
+    exists = {
+        row[0]
+        for row in check.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name IN ('mutation_receipts','sandbox_receipts')"
+        )
+    }
     check.close()
-    assert exists == 1
+    assert exists == {"mutation_receipts", "sandbox_receipts"}
 
 
 def test_store_rejects_duplicate_run_id(tmp_path):

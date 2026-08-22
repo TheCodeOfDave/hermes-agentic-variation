@@ -58,6 +58,18 @@ def test_workspace_rejects_untrusted_identifiers_and_unknown_mutations(tmp_path)
         workspace.apply(repo, "model-authored-code")
 
 
+def test_workspace_supports_explicit_phase4_prefix_without_weakening_default(tmp_path):
+    workspace = Phase3Workspace(
+        tmp_path / "phase4-runs", test_timeout_seconds=10, repository_prefix="phase4"
+    )
+
+    repo = workspace.create("phase4-abcdef")
+
+    assert repo.name == "phase4-abcdef"
+    with pytest.raises(WorkspaceViolation):
+        workspace.create("phase3-bbbbbb")
+
+
 def test_executor_uses_no_shell_and_fixed_cwd(tmp_path, monkeypatch):
     workspace = Phase3Workspace(tmp_path / "runs", test_timeout_seconds=7)
     repo = workspace.create("phase3-abcdef")

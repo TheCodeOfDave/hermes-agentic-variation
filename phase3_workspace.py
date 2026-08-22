@@ -66,7 +66,13 @@ class CommandResult:
 class Phase3Workspace:
     """Create and evaluate one trusted-template disposable repository."""
 
-    def __init__(self, root: str | Path, *, test_timeout_seconds: int):
+    def __init__(
+        self,
+        root: str | Path,
+        *,
+        test_timeout_seconds: int,
+        repository_prefix: str = "phase3",
+    ):
         raw_root = Path(root)
         if raw_root.exists() and raw_root.is_symlink():
             raise WorkspaceViolation("workspace root must not be a symlink")
@@ -74,15 +80,17 @@ class Phase3Workspace:
         if type(test_timeout_seconds) is not int or not 1 <= test_timeout_seconds <= 60:
             raise WorkspaceViolation("test timeout must be an integer from 1 to 60")
         self.test_timeout_seconds = test_timeout_seconds
+        if repository_prefix not in {"phase3", "phase4"}:
+            raise WorkspaceViolation("repository prefix is invalid")
+        self.repository_prefix = repository_prefix
         git = shutil.which("git")
         if not git:
             raise WorkspaceViolation("git executable is required for Phase 3")
         self.git_executable = str(Path(git).resolve())
 
     def create(self, repository_id: str) -> Path:
-        if not isinstance(repository_id, str) or re.fullmatch(
-            r"phase3-[0-9a-f]{6,32}", repository_id
-        ) is None:
+        pattern = rf"{re.escape(self.repository_prefix)}-[0-9a-f]{{6,32}}"
+        if not isinstance(repository_id, str) or re.fullmatch(pattern, repository_id) is None:
             raise WorkspaceViolation("repository_id is invalid")
         self.root.mkdir(parents=True, exist_ok=True)
         if self.root.is_symlink():
