@@ -8,6 +8,8 @@ try:
     from .phase2 import Phase2DisabledError
     from .phase3 import Phase3DisabledError
     from .phase4 import Phase4DisabledError
+    from .phase5 import Phase5DisabledError
+    from .phase5_sandbox import Phase5SandboxUnavailable
     from .phase4_sandbox import SandboxUnavailable, SandboxViolation
     from .contracts import ContractValidationError, RunSpec
     from .state_machine import TransitionError
@@ -17,6 +19,8 @@ except ImportError:  # Direct module execution in local tests.
     from phase2 import Phase2DisabledError
     from phase3 import Phase3DisabledError
     from phase4 import Phase4DisabledError
+    from phase5 import Phase5DisabledError
+    from phase5_sandbox import Phase5SandboxUnavailable
     from phase4_sandbox import SandboxUnavailable, SandboxViolation
     from contracts import ContractValidationError, RunSpec
     from state_machine import TransitionError
@@ -27,19 +31,20 @@ _TUPLE_FIELDS = ("exclusions", "correctness_predicates", "score_keys", "allowed_
 
 def avo_phase0_info(
     args: dict[str, Any], *, phase1_enabled: bool = False, phase2_enabled: bool = False,
-    phase3_enabled: bool = False, phase4_enabled: bool = False, **kwargs: Any
+    phase3_enabled: bool = False, phase4_enabled: bool = False, phase5_enabled: bool = False, **kwargs: Any
 ) -> str:
     del args, kwargs
     return json.dumps(
         {
             "plugin": "agentic-variation",
-            "version": "0.5.0",
-            "phase": 4,
+            "version": "0.6.0",
+            "phase": 5,
             "schema_version": _SCHEMA_VERSION,
             "execution_enabled": phase1_enabled,
             "phase2_execution_enabled": phase2_enabled,
             "phase3_execution_enabled": phase3_enabled,
             "phase4_execution_enabled": phase4_enabled,
+            "phase5_execution_enabled": phase5_enabled,
             "single_step_only": False,
             "explicit_manual_steps_only": True,
             "max_phase2_steps": 3,
@@ -50,6 +55,8 @@ def avo_phase0_info(
             "phase3_controller_mutation": True,
             "phase4_sandbox_required": True,
             "phase4_network_policy": "none",
+            "phase5_sandbox_required": True,
+            "phase5_network_policy": "none",
         },
         sort_keys=True,
     )
@@ -108,6 +115,7 @@ def avo_phase3_tool_rejected(
 
 def make_phase1_handlers(controller_factory):
     def invoke(method_name: str, args: dict[str, Any]) -> str:
+
         try:
             controller = controller_factory()
             method = getattr(controller, method_name)
@@ -144,6 +152,7 @@ def make_phase1_handlers(controller_factory):
 
 def make_phase2_handlers(controller_factory):
     def invoke(method_name: str, args: dict[str, Any]) -> str:
+
         try:
             controller = controller_factory()
             method = getattr(controller, method_name)
@@ -181,6 +190,7 @@ def make_phase2_handlers(controller_factory):
 
 def make_phase3_handlers(controller_factory):
     def invoke(method_name: str, args: dict[str, Any]) -> str:
+
         try:
             controller = controller_factory()
             method = getattr(controller, method_name)
@@ -217,6 +227,7 @@ def make_phase3_handlers(controller_factory):
 
 def make_phase4_handlers(controller_factory):
     def invoke(method_name: str, args: dict[str, Any]) -> str:
+
         try:
             controller = controller_factory()
             method = getattr(controller, method_name)
@@ -251,3 +262,43 @@ def make_phase4_handlers(controller_factory):
         "avo_phase4_reconcile": lambda args, **kwargs: invoke("reconcile", args),
         "avo_phase4_cancel": lambda args, **kwargs: invoke("cancel", args),
     }
+
+
+def make_phase5_handlers(controller_factory):
+    def operator_error_type(exc: Exception) -> str:
+        if isinstance(exc, Phase5DisabledError):
+            return "VariationCycleDisabledError"
+        if isinstance(exc, Phase5SandboxUnavailable):
+            return "VariationCycleUnavailable"
+        return type(exc).__name__
+
+    def invoke(method_name: str, args: dict[str, Any]) -> str:
+        if method_name != "create_run" and not str(args.get("run_id", "")).startswith("phase5-"):
+            return json.dumps({"ok": False, "error_type": "VariationCycleToolRoutingError",
+                               "error": "Dedicated Variation Cycle tools require a valid variation identifier."},
+                              sort_keys=True)
+        try:
+            controller = controller_factory()
+            method = getattr(controller, method_name)
+            if method_name == "create_run":
+                result = method(objective=args.get("objective", ""), approval_receipt=args.get("approval_receipt", ""))
+            else:
+                result = method(args.get("run_id", ""))
+            return json.dumps(result, sort_keys=True)
+        except (Phase5DisabledError, Phase5SandboxUnavailable, ContractValidationError,
+                StorageConflictError, TransitionError, KeyError, TypeError, ValueError) as exc:
+            return json.dumps({"ok": False, "error_type": operator_error_type(exc),
+                               "error": str(exc)[:500]}, sort_keys=True)
+    return {
+        "avo_create_phase5_run": lambda args, **kwargs: invoke("create_run", args),
+        "avo_patchset_phase5": lambda args, **kwargs: invoke("patchset", args),
+        "avo_phase5_receipt": lambda args, **kwargs: invoke("receipt", args),
+        "avo_phase5_reconcile": lambda args, **kwargs: invoke("reconcile", args),
+    }
+
+
+def avo_phase5_tool_rejected(args: dict[str, Any], *, tool_name: str, **kwargs: Any) -> str:
+    del args, kwargs
+    return json.dumps({"ok": False, "error_type": "VariationCycleToolRoutingError",
+                       "error": f"Variation Cycles cannot use {tool_name}; use the dedicated Variation Cycle tools."},
+                      sort_keys=True)

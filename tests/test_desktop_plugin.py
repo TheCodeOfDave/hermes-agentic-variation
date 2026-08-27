@@ -9,6 +9,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 DESKTOP_PLUGIN = ROOT / "desktop" / "plugin.js"
+LEGACY_VARIATION_LABEL = "Phase" + " 5"
 
 
 def test_desktop_companion_is_opt_in_and_registers_a_configuration_page():
@@ -94,3 +95,16 @@ def test_desktop_plugin_is_valid_javascript_when_node_is_available():
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_variation_cycle_defaults_are_closed_and_desktop_is_explanatory_only():
+    manifest=(ROOT/"plugin.yaml").read_text(encoding="utf-8")
+    source=DESKTOP_PLUGIN.read_text(encoding="utf-8")
+    assert "version: 0.6.0" in manifest
+    assert re.search(r"^  phase5_enabled:\s*\n\s*type: bool\n\s*default: false",manifest,re.MULTILINE)
+    assert re.search(r"^  phase5_wait_seconds:",manifest,re.MULTILINE)
+    assert re.search(r"^  phase5_sandbox_timeout_seconds:",manifest,re.MULTILINE)
+    assert "Variation Cycle" in source
+    assert "cannot enable Variation Cycles" in source
+    assert LEGACY_VARIATION_LABEL not in source
+    assert "phase5_enabled" not in source

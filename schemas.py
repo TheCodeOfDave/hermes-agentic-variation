@@ -107,3 +107,18 @@ AVO_PHASE4_RECEIPT = _run_id_schema(
 AVO_PHASE4_RECONCILE = _run_id_schema(
     "avo_phase4_reconcile", "Reconcile Phase 4 state without rerunning sandbox effects."
 )
+
+AVO_CREATE_PHASE5_RUN = {
+    **AVO_CREATE_RUN,
+    "name": "avo_create_phase5_run",
+    "description": "Create one disabled-by-default atomic Variation Cycle.",
+}
+AVO_PATCHSET_PHASE5 = _run_id_schema(
+    "avo_patchset_phase5", "Generate and evaluate one strict two-or-three-artifact Variation Proposal through separate apply and evaluation sandboxes."
+)
+AVO_PHASE5_RECEIPT = _run_id_schema(
+    "avo_phase5_receipt", "Read the append-only Variation Receipt."
+)
+AVO_PHASE5_RECONCILE = _run_id_schema(
+    "avo_phase5_reconcile", "Recover a Variation Cycle from durable evidence without rerunning generation, application, or evaluation."
+)

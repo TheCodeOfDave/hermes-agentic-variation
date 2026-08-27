@@ -49,7 +49,7 @@ def test_store_creates_schema_and_round_trips_immutable_run(tmp_path):
     assert created.status == "created"
     assert loaded_spec.identity == spec.identity
     assert loaded_state == created
-    assert store.schema_version() == 5
+    assert store.schema_version() == 6
 
 
 def test_store_migrates_phase0_schema_metadata_and_adds_phase1_tables(tmp_path):
@@ -65,7 +65,7 @@ def test_store_migrates_phase0_schema_metadata_and_adds_phase1_tables(tmp_path):
 
     store = RunStore(database)
 
-    assert store.schema_version() == 5
+    assert store.schema_version() == 6
     check = sqlite3.connect(database)
     tables = {
         row[0]
@@ -127,7 +127,7 @@ def test_store_migrates_populated_v2_without_changing_existing_rows(tmp_path):
     }
     check.close()
 
-    assert store.schema_version() == 5
+    assert store.schema_version() == 6
     assert counts == {"runs": 1, "run_events": 1, "candidates": 1, "evaluations": 1}
     assert phase2_tables == {"continuation_memory", "supervisor_advice"}
 
@@ -279,7 +279,7 @@ def test_store_migrates_populated_v3_memory_and_advice_to_v5(tmp_path):
 
     migrated = RunStore(database)
 
-    assert migrated.schema_version() == 5
+    assert migrated.schema_version() == 6
     assert migrated.load_memory(spec.run_id) == continuation(spec)
     assert migrated.supervisor_advice(spec.run_id) == [advice.to_dict()]
     check = sqlite3.connect(database)

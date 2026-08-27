@@ -1,12 +1,12 @@
-# Phase 5 — Atomic Bounded Multi-File Patch Set
+# Variation Cycle — Atomic Bounded Multi-Artifact Proposal
 
 ## Decision
 
-Phase 5 expands the **shape of one candidate**, not the authority of the model.
+A Variation Cycle expands the **shape of one candidate**, not the authority of the model.
 
 A `todo`-only child may propose one patch set affecting two or three existing, plugin-owned, explicitly allowlisted source files. Trusted controller and sandbox code independently validate and apply the complete set transactionally. Immutable tests remain controller-owned. The evaluator—not the model—decides eligibility.
 
-Phase 5 does not add a loop, retry, commit, push, pull request, deployment, cleanup, network access, package installation, credential access, arbitrary repository, or test modification.
+A Variation Cycle does not add a loop, retry, commit, push, pull request, deployment, cleanup, network access, package installation, credential access, arbitrary repository, or test modification.
 
 ## Goal
 
@@ -21,7 +21,7 @@ Prove that Hermes can evaluate a small cross-file source change without allowing
 
 ## Non-goals
 
-Phase 5 is not general coding authority. It is not a real-project repair agent and does not authorize:
+A Variation Cycle is not general coding authority. It is not a real-project repair agent and does not authorize:
 
 - user repositories or arbitrary plugin repositories;
 - test, fixture, CI, manifest, dependency, or configuration edits;
@@ -33,7 +33,7 @@ Phase 5 is not general coding authority. It is not a real-project repair agent a
 ## Flow
 
 ```text
-backend Phase 5 gate
+backend Variation Cycle gate
 → plugin-owned immutable three-file baseline repository
 → fixed objective and immutable test suite
 → todo-only child returns one closed patch-set JSON object
@@ -53,7 +53,7 @@ backend Phase 5 gate
 
 ## Fixture
 
-The plugin creates one real, no-commit, no-remote Git repository below the Phase 5 workspace root.
+The plugin creates one real, no-commit, no-remote Git repository below the Variation Cycle workspace root.
 
 Fixed source files:
 
@@ -99,7 +99,7 @@ Validation:
 - `patches` is an array of two or three objects;
 - each object has exactly `path` and `patch` string keys;
 - paths are unique ASCII names from the closed allowlist;
-- patches are ordered by UTF-8 bytewise lexicographic path order; this is the canonical path order everywhere in Phase 5;
+- patches are ordered by UTF-8 bytewise lexicographic path order; this is the canonical path order throughout a Variation Cycle;
 - each patch header must be exactly `--- a/<path>` then `+++ b/<path>` with no BOM, timestamp, suffix, or trailing text;
 - rationale is non-empty, at most 1,000 Unicode scalar values, and at most 4,000 UTF-8 bytes;
 - each patch is at most 8 KiB measured after JSON decoding as UTF-8 bytes;
@@ -175,7 +175,7 @@ No partial candidate, partial receipt, or partial eligibility decision is repres
 
 ## Sandbox policy
 
-Both stages use the same digest-pinned image and fail-closed Docker adapter family proven in Phase 4, but they run as separate containers and share no process, writable filesystem, or output channel.
+Both stages use the digest-pinned image and fail-closed Docker adapter family proven by the earlier single-artifact workflow, but they run as separate containers and share no process, writable filesystem, or output channel.
 
 Required Docker arguments remain controller-owned for each stage:
 
@@ -197,7 +197,7 @@ Required Docker arguments remain controller-owned for each stage:
 
 The receipt records both stage command IDs and the literal memory, CPU, PID, tmpfs, UID/GID, output, and timeout ceilings in addition to the policy hash.
 
-The model, plugin inside `hermes-owner`, and both sandbox containers never receive the host Docker socket.
+The model, plugin inside the Hermes acceptance container, and both sandbox containers never receive the host Docker socket.
 
 ## Import, staging, and test evidence
 
@@ -257,17 +257,17 @@ One receipt binds:
 
 Candidate, evaluation, and patch-set receipt are inserted in one SQLite transaction. Update and delete triggers remain fail-closed.
 
-Schema v5→v6 migration runs in one SQLite transaction and must preserve all Phase 0–4 runs, events, candidates, evaluations, continuation memory, supervisor advice, mutation receipts, and sandbox receipts byte-for-byte. Migration tests compare populated pre/post rows and schema version, and any error rolls back the complete migration.
+Schema v5→v6 migration runs in one SQLite transaction and must preserve all pre-existing runs, events, candidates, evaluations, continuation memory, supervisor advice, mutation receipts, and sandbox receipts byte-for-byte. Migration tests compare populated pre/post rows and schema version, and any error rolls back the complete migration.
 
 ## Controller
 
-Phase 5 adds one controller with an independent backend gate and workspace/artifact roots.
+The Variation Cycle engine adds one controller with an independent backend gate and workspace/artifact roots.
 
 Responsibilities:
 
 - validate objective and approval receipt before side effects;
 - preflight the exact local image before repository creation;
-- create one Phase 5 RunSpec with a closed evaluator ID and allowlist;
+- create one Cycle Specification with a closed evaluator ID and allowlist;
 - launch exactly one `todo`-only child;
 - parse one strict patch-set payload;
 - validate all patches before Docker;
@@ -281,7 +281,7 @@ Responsibilities:
 - report inert staging orphans during reconciliation;
 - never retry automatically.
 
-Every Phase 5 tool must reject Phase 0–4 run IDs before transitions, child calls, filesystem changes, or Docker calls. Phase 0–4 tools must similarly reject `phase5-` IDs before effects.
+Every Variation Cycle tool must reject legacy run IDs before transitions, child calls, filesystem changes, or Docker calls. Legacy tools must similarly reject internal `phase5-` identifiers before effects.
 
 ## Recovery
 
@@ -296,7 +296,7 @@ Recovery remains evidence-only:
 
 ## Tools
 
-Phase 5 adds four tools:
+The Variation Cycle engine exposes four internal compatibility tools:
 
 - `avo_create_phase5_run`;
 - `avo_patchset_phase5`;
@@ -313,7 +313,7 @@ Backend settings default closed:
 
 File count, allowlist, per-patch size, aggregate size, hunk ceiling, image, command, and sandbox policy are code-owned constants, not Desktop settings.
 
-Desktop may explain Phase 5 but cannot enable execution or widen any limit.
+Desktop may explain Variation Cycles but cannot enable execution or widen any limit.
 
 ## TDD slices
 
@@ -327,7 +327,7 @@ Implementation must use vertical RED→GREEN slices:
 6. Stage B immutable evaluator/worker protocol with host-observed exit/trailer/stdout/stderr, including `os._exit(0)`, exit-0-empty-output, early/partial/duplicate/extra response, timeout, signal, stderr, and overflow negatives;
 7. exact changed paths, tampered source/path/order/tree/policy/command rejection, and inert-orphan reporting;
 8. schema v6 atomic append-only receipt and populated-v5 transactional migration;
-9. controller success/failure and cross-phase routing;
+9. controller success/failure and legacy-tool routing;
 10. no-effect recovery across both stages;
 11. Desktop/manifest/tool registration and disabled defaults;
 12. real pinned-Docker two-file and three-file canaries.
@@ -336,7 +336,7 @@ Each production behavior requires a focused failing test observed before impleme
 
 ## Acceptance
 
-- [ ] Phase 0–4 suites remain green.
+- [ ] All pre-existing suites remain green.
 - [ ] Patch-set parser accepts canonical two-file and three-file cases.
 - [ ] One-file, four-file, duplicate, unsorted, unknown, test-file, traversal, CR, NUL, BOM, Unicode-separator, timestamped-header, optional-section, binary, rename, mode, zero-context, fuzz/offset, no-op-member, over-500-byte-line, over-1,000-scalar/4,000-byte rationale, and oversized sets fail closed.
 - [ ] Every member is validated before Stage A starts.
@@ -354,15 +354,15 @@ Each production behavior requires a focused failing test observed before impleme
 - [ ] Candidate/evaluation/patch-set receipt binds rationale, both stages, literal ceilings, and is atomic and append-only.
 - [ ] Populated schema-v5 migration is transactional and preserves prior evidence.
 - [ ] Recovery never reruns child, either Docker stage, patch, or tests and reports inert orphans.
-- [ ] All cross-phase tools reject foreign run IDs before effects.
-- [ ] Plugin Doctor reports 23 tools and 0 hooks; this count is confirmed from the implemented Phase 4 baseline plus four Phase 5 tools, not assumed from the specification.
+- [ ] All legacy and Variation Cycle tools reject foreign run IDs before effects.
+- [ ] Plugin Doctor reports 23 tools and 0 hooks; this count is confirmed from the implemented 19-tool baseline plus four Variation Cycle tools, not assumed from the specification.
 - [ ] Desktop remains opt-in and cannot enable backend execution.
-- [ ] Windows 11 focused/full gates pass.
+- [ ] Windows test VM focused/full gates pass.
 - [ ] Real pinned-Docker two-file and three-file canaries pass; residue is limited to explicitly retained workspace/candidate/receipt evidence and reported inert orphans.
 - [ ] Independent technical review approves exact bytes.
 - [ ] Both commit privacy gates pass without bypass.
 - [ ] Independent QA passes exact committed bytes.
-- [ ] Serenity Plugin Doctor and direct-host canaries pass while plugin remains disabled and Phase 1–5 gates false.
+- [ ] Acceptance-host Plugin Doctor and direct-host canaries pass while the plugin remains disabled and all backend execution gates are false.
 - [ ] Non-force push and GitHub CI pass on exact SHAs.
 
 ## Explicitly deferred
@@ -378,4 +378,4 @@ Each production behavior requires a focused failing test observed before impleme
 
 ## Promotion rule
 
-Phase 5 may be implemented only after this specification receives independent architecture/security review. Any review correction changes the specification digest and requires a fresh review. Implementation acceptance does not authorize Phase 6 or any wider authority.
+Variation Cycles may be implemented only after this specification receives independent architecture/security review. Any review correction changes the specification digest and requires a fresh review. Implementation acceptance does not authorize any wider authority.

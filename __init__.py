@@ -13,6 +13,7 @@ def register(ctx):
     phase2_enabled = ctx.get_config("phase2_enabled", default=False) is True
     phase3_enabled = ctx.get_config("phase3_enabled", default=False) is True
     phase4_enabled = ctx.get_config("phase4_enabled", default=False) is True
+    phase5_enabled = ctx.get_config("phase5_enabled", default=False) is True
     raw_wait = ctx.get_config("phase1_wait_seconds", default=120)
     wait_seconds = raw_wait if type(raw_wait) is int and 5 <= raw_wait <= 180 else 120
     raw_phase2_wait = ctx.get_config("phase2_wait_seconds", default=120)
@@ -43,10 +44,15 @@ def register(ctx):
         if type(raw_sandbox_timeout) is int and 5 <= raw_sandbox_timeout <= 120
         else 30
     )
+    raw_phase5_wait = ctx.get_config("phase5_wait_seconds", default=120)
+    phase5_wait_seconds = raw_phase5_wait if type(raw_phase5_wait) is int and 5 <= raw_phase5_wait <= 180 else 120
+    raw_phase5_timeout = ctx.get_config("phase5_sandbox_timeout_seconds", default=30)
+    phase5_sandbox_timeout_seconds = raw_phase5_timeout if type(raw_phase5_timeout) is int and 5 <= raw_phase5_timeout <= 120 else 30
     controller_instance = None
     phase2_controller_instance = None
     phase3_controller_instance = None
     phase4_controller_instance = None
+    phase5_controller_instance = None
 
     def controller_factory():
         nonlocal controller_instance
@@ -159,10 +165,38 @@ def register(ctx):
             )
         return phase4_controller_instance
 
+    def phase5_controller_factory():
+        nonlocal phase5_controller_instance
+        if phase5_controller_instance is None:
+            from plugins.plugin_storage import plugin_data_dir
+            try:
+                from .phase5 import Phase5Controller
+                from .phase5_fixture import Phase5Fixture
+                from .phase5_sandbox import Phase5DockerSandbox
+                from .runtime import HermesLifecycleAdapter
+                from .storage import RunStore
+            except ImportError:
+                from phase5 import Phase5Controller
+                from phase5_fixture import Phase5Fixture
+                from phase5_sandbox import Phase5DockerSandbox
+                from runtime import HermesLifecycleAdapter
+                from storage import RunStore
+            data_dir = plugin_data_dir("agentic-variation")
+            phase5_controller_instance = Phase5Controller(
+                store=RunStore(data_dir / "phase1.db"),
+                lifecycle=HermesLifecycleAdapter(ctx.subagent_lifecycle, phase=5),
+                fixture=Phase5Fixture(data_dir / "phase5-runs"),
+                sandbox=Phase5DockerSandbox(data_dir / "phase5-sandbox", timeout_seconds=phase5_sandbox_timeout_seconds),
+                artifact_root=data_dir / "phase5-artifacts",
+                enabled=phase5_enabled,
+                wait_seconds=phase5_wait_seconds,
+            )
+        return phase5_controller_instance
     phase1_handlers = tools.make_phase1_handlers(controller_factory)
     phase2_handlers = tools.make_phase2_handlers(phase2_controller_factory)
     phase3_handlers = tools.make_phase3_handlers(phase3_controller_factory)
     phase4_handlers = tools.make_phase4_handlers(phase4_controller_factory)
+    phase5_handlers = tools.make_phase5_handlers(phase5_controller_factory)
     def step_handler(args, **kwargs):
         if str(args.get("run_id", "")).startswith("phase4-"):
             return tools.avo_phase3_tool_rejected(
@@ -207,6 +241,7 @@ def register(ctx):
              phase2_enabled=phase2_enabled,
              phase3_enabled=phase3_enabled,
              phase4_enabled=phase4_enabled,
+             phase5_enabled=phase5_enabled,
              **kwargs,
          )),
         ("avo_validate_run_spec", schemas.AVO_VALIDATE_RUN_SPEC, tools.avo_validate_run_spec),
@@ -247,9 +282,23 @@ def register(ctx):
         ("avo_phase4_receipt", schemas.AVO_PHASE4_RECEIPT,
          phase4_handlers["avo_phase4_receipt"]),
         ("avo_phase4_reconcile", schemas.AVO_PHASE4_RECONCILE,
-         phase4_handlers["avo_phase4_reconcile"]),
+         phase4_handlers["avo_phase4_reconcile"]),        ("avo_create_phase5_run", schemas.AVO_CREATE_PHASE5_RUN,
+         phase5_handlers["avo_create_phase5_run"]),
+        ("avo_patchset_phase5", schemas.AVO_PATCHSET_PHASE5,
+         phase5_handlers["avo_patchset_phase5"]),
+        ("avo_phase5_receipt", schemas.AVO_PHASE5_RECEIPT,
+         phase5_handlers["avo_phase5_receipt"]),
+        ("avo_phase5_reconcile", schemas.AVO_PHASE5_RECONCILE,
+         phase5_handlers["avo_phase5_reconcile"]),
     )
+    phase5_tool_names = {"avo_create_phase5_run", "avo_patchset_phase5", "avo_phase5_receipt", "avo_phase5_reconcile"}
     for name, schema, handler in registrations:
+        if name not in phase5_tool_names:
+            original = handler
+            def handler(args, _original=original, _name=name, **kwargs):
+                if str(args.get("run_id", "")).startswith("phase5-"):
+                    return tools.avo_phase5_tool_rejected(args, tool_name=_name, **kwargs)
+                return _original(args, **kwargs)
         ctx.register_tool(
             name=name,
             toolset="agentic-variation",

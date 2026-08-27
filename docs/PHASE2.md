@@ -191,8 +191,8 @@ Existing Phase 1 tools remain supported. Phase 2 uses backend settings `phase2_e
 - [x] Second supervision request terminates rather than extending the run.
 - [x] Plugin Doctor registers exactly eleven tools and zero hooks.
 - [x] Desktop remains unable to enable backend execution.
-- [x] Local and Serenity suites, Ruff, build, Node syntax/harness, and Plugin Doctor pass.
-- [x] One live Serenity stagnation→supervisor→manual-step sequence is accepted and final plugin state is disabled.
+- [x] Local and acceptance-host suites, Ruff, build, Node syntax/harness, and Plugin Doctor pass.
+- [x] One live acceptance-host stagnation→supervisor→manual-step sequence is accepted and final plugin state is disabled.
 - [x] Forge approves exact bytes; Terra independently passes exact bytes and live evidence.
 - [x] GitHub CI passes Python 3.11–3.13 and Desktop gates.
 
@@ -202,15 +202,15 @@ Existing Phase 1 tools remain supported. Phase 2 uses backend settings `phase2_e
 - Parent: `26a29f2228d2b1fa0b348548c24a4dd566ddeafd`
 - Implementation diff SHA-256: `a8d7cdd6b440e35cfde82882ceb07f5bf9043a4986105d7fa03150bf19f07afe`
 - Candidate archive SHA-256: `6ec54711ca88297f72ce283c83bc10a8d18661a3afe380752f17cd147d1a3654`
-- Local and Serenity: 75 tests passed; Ruff, wheel build, Node syntax, Desktop VM harness, and Plugin Doctor passed; Plugin Doctor registered eleven tools and zero hooks.
+- Local and acceptance host: 75 tests passed; Ruff, wheel build, Node syntax, Desktop VM harness, and Plugin Doctor passed; Plugin Doctor registered eleven tools and zero hooks.
 - Forge/GLM: `APPROVE` on exact corrected bytes after mixed-lineage reconciliation review.
-- Verifier/Terra: `PASS` on exact commit, installed-source comparison, and durable Serenity evidence.
-- Serenity: Hermes v0.20.5 upstream `fd3a783a`; plugin 0.3.0 installed and left disabled.
-- Live run: `phase2-5cfc671d8168b1fa`; first candidate `memoized_lookup` scored `5.0` and became best; strict-equal second candidate triggered `supervision_required`; exactly one supervisor advice artifact applied; third explicit step terminated `budget_exhausted` while preserving the best candidate.
+- Verifier/Terra: `PASS` on exact commit, exact-source comparison, and durable acceptance-host evidence.
+- Acceptance host: plugin 0.3.0 installed and left disabled.
+- Live canary: first candidate `memoized_lookup` scored `5.0` and became best; strict-equal second candidate triggered `supervision_required`; exactly one supervisor advice artifact applied; third explicit step terminated `budget_exhausted` while preserving the best candidate.
 - Durable evidence: schema 3; state revision 12; memory revision 5 bound to state revision 12; three candidates; three evaluations; one supervisor advice; each child and supervisor recorded one API call.
-- Final backend state: `phase1_enabled=false`, `phase2_enabled=false`, plugin disabled, plugin toolset absent from CLI, API healthy.
+- Final backend state: `phase1_enabled=false`, `phase2_enabled=false`, plugin disabled, plugin toolset absent from CLI.
 - GitHub Actions: https://github.com/TheCodeOfDave/hermes-agentic-variation/actions/runs/32517420859 — PASS across Python 3.11–3.13, Ruff, and Desktop gates.
-- Known upstream residual: CLI emitted an early unknown-toolset warning and exited `134` during Honcho teardown after returning the successful final result; authoritative SQLite evidence and final safe state were intact.
+
 
 ## Explicitly deferred
 
@@ -220,4 +220,4 @@ Existing Phase 1 tools remain supported. Phase 2 uses backend settings `phase2_e
 - more than one supervisor intervention;
 - cross-host workers or leases;
 - true provider-dollar cost accounting when the public lifecycle exposes no exact cost;
-- live Desktop rendering on dc-workstation.
+- live Desktop rendering on the orchestration host.

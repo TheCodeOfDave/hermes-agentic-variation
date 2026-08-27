@@ -154,9 +154,9 @@ Desktop cannot enable them.
 - [x] Interrupted mutation never reruns effects automatically.
 - [x] Plugin Doctor registers exactly fifteen tools and zero hooks.
 - [x] Desktop remains unable to enable backend execution.
-- [x] Local and Serenity suites, Ruff, build, Node syntax/harness, Plugin Doctor, security, and privacy gates pass.
-- [x] Live Serenity canary mutates one disposable repo, passes fixed tests, records one receipt, and leaves the repo retained.
-- [x] Final Serenity plugin state is disabled and all execution gates are false.
+- [x] Local and acceptance-host suites, Ruff, build, Node syntax/harness, Plugin Doctor, security, and privacy gates pass.
+- [x] Live acceptance-host canary mutates one disposable repo, passes fixed tests, records one receipt, and leaves the repo retained.
+- [x] Final acceptance-host plugin state is disabled and all execution gates are false.
 - [x] Forge approves exact bytes; Terra independently passes exact bytes and live evidence.
 - [x] GitHub CI passes Python 3.11–3.13 and Desktop gates.
 
@@ -166,18 +166,17 @@ Desktop cannot enable them.
 - Parent: `bcbe1724d75d3825afa6f7d21e7d51bc45804d3a`
 - Implementation diff SHA-256: `96075b71ecb68b7eb1885ee2405a998a4332450dc8fcf7b3d858bef72e3b73b2`
 - Candidate archive SHA-256: `70ffbf56979016bc838efcbbed81289fa880ccb3f49f0831e73ad2a76dca8d94`
-- Local and Serenity: 96 tests passed; Ruff, wheel build, Node syntax, Desktop VM harness, and Plugin Doctor passed; Plugin Doctor registered fifteen tools and zero hooks.
+- Local and acceptance host: 96 tests passed; Ruff, wheel build, Node syntax, Desktop VM harness, and Plugin Doctor passed; Plugin Doctor registered fifteen tools and zero hooks.
 - Security scan found no hardcoded secrets, shell injection, dynamic execution, unsafe pickle, or formatted SQL. Both Git privacy gates passed before commit.
 - Forge/GLM: `APPROVE` on exact final bytes after cross-phase run-ownership and tool-routing corrections.
-- Verifier/Terra: final corrected run `PASS`; authoritative archive hash and full installed-source equality verified, after superseding two blocked attempts that used the wrong archive/location evidence.
-- Serenity: Hermes v0.20.5 upstream `76f6ba37`; plugin 0.4.0 installed and left disabled.
-- Live run `phase3-ec70160e83e350b6`: todo-only child selected `filter_even`; controller changed only trusted `calculator.py`; fixed `python -m unittest -q` ran two tests and passed; state `succeeded`, revision 4; one candidate, one evaluation, one append-only mutation receipt, child API calls 1.
-- Retained repository: `/opt/data/plugin-data/agentic-variation/phase3-runs/phase3-ec70160e83e350b6`; Git commit count 0; remote count 0; baseline tree `c174344437b68536e0f858d41e28aad269a90e7e221566de26bc6e0a647a650c`; mutated tree `a1e0236ae7a2b2338452aeb687416a9110ed8477745347b513d39fabb4ad51f0`.
+- Verifier/Terra: final corrected run `PASS`; authoritative archive hash and full exact-source equality verified, after superseding two blocked attempts that used the wrong archive/location evidence.
+- Acceptance host: plugin 0.4.0 installed and left disabled.
+- Live canary: todo-only child selected `filter_even`; controller changed only trusted `calculator.py`; fixed `python -m unittest -q` ran two tests and passed; state `succeeded`, revision 4; one candidate, one evaluation, one append-only mutation receipt, child API calls 1.
+- Retained repository: `<PLUGIN_DATA_ROOT>/agentic-variation/phase3-runs/<RUN_ID>`; Git commit count 0; remote count 0; baseline tree `c174344437b68536e0f858d41e28aad269a90e7e221566de26bc6e0a647a650c`; mutated tree `a1e0236ae7a2b2338452aeb687416a9110ed8477745347b513d39fabb4ad51f0`.
 - Receipt hash: `c5051b6e9e38b11957faf5060e30da6fbc6c42d05f0f3831d85d854187805728`; cleanup status `retained`.
-- Final backend state: Phase 1/2/3 gates false, plugin disabled, plugin toolset absent from CLI, API and containers healthy with zero restarts.
+- Final backend state: Phase 1/2/3 gates false, plugin disabled, plugin toolset absent from CLI.
 - GitHub Actions: https://github.com/TheCodeOfDave/hermes-agentic-variation/actions/runs/32531547427 — PASS across Python 3.11–3.13, Ruff, and Desktop gates.
-- Environmental residuals: Serenity filesystem was 93% used with about 14 GB free. Acceptance tooling left `.venv`, `.pytest_cache`, and `.ruff_cache` under the installed plugin directory; they were not deleted because deletion was not authorized.
-- Known upstream residual: interactive CLI emitted the existing unknown-toolset warning and exited `134` during Honcho teardown after returning the successful result; authoritative receipt and final safe state were intact.
+
 
 ## Explicitly deferred
 

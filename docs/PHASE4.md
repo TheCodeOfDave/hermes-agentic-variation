@@ -2,9 +2,9 @@
 
 ## Deployment decision
 
-Phase 4 accepts one model-authored unified patch only inside a disposable Docker sandbox. Serenity remains a test host; no persistent sandbox service and no Docker socket mount into `hermes-owner` are introduced.
+Phase 4 accepts one model-authored unified patch only inside a disposable Docker sandbox. The acceptance host remains test-only; no persistent sandbox service and no Docker socket mount into the Hermes acceptance container are introduced.
 
-The plugin uses a local Docker CLI adapter when a trusted host runtime is available. Inside Serenity’s `hermes-owner` container the Phase 4 tool remains unavailable because no Docker socket is mounted. Acceptance executes the same controller and adapter directly on the Serenity host against the exact candidate source, then leaves the installed Hermes plugin disabled.
+The plugin uses a local Docker CLI adapter when a trusted host runtime is available. Inside the Hermes acceptance container the Phase 4 tool remains unavailable because no Docker socket is mounted. Acceptance executes the same controller and adapter directly on the acceptance host against the exact candidate source, then leaves the installed Hermes plugin disabled.
 
 ## Flow
 
@@ -60,7 +60,7 @@ The adapter uses:
 - stdin closed and bounded host timeout;
 - stdout JSON capped at 64 KiB.
 
-No host Docker socket is exposed to the model or to `hermes-owner`.
+No host Docker socket is exposed to the model or the Hermes acceptance container.
 
 ## Patch contract
 
@@ -161,8 +161,8 @@ Backend settings default closed:
 - [x] Plugin Doctor registers nineteen tools and zero hooks.
 - [x] Desktop cannot enable backend execution.
 - [x] Local Docker canary passes against the pinned image.
-- [x] Exact candidate passes direct Serenity-host Docker canary without installing a host service or mounting Docker into `hermes-owner`.
-- [x] Installed Serenity plugin remains disabled and Phase 1–4 gates false.
+- [x] Exact candidate passes direct acceptance-host Docker canary without installing a host service or mounting Docker into the Hermes acceptance container.
+- [x] Installed acceptance-host plugin remains disabled and Phase 1–4 gates false.
 - [x] Forge approves exact bytes; Terra independently passes exact bytes and evidence.
 - [x] GitHub CI passes Python 3.11–3.13 and non-Docker gates.
 
@@ -183,15 +183,15 @@ Phase 4 implementation was accepted and delivered as commit `c203fa9d78a0f376f28
 
 Verification receipts:
 
-- Windows 11 guest: 127 tests passed; Ruff, Node syntax, Desktop harness, compileall, and fresh wheel build passed.
+- Windows test VM: 127 tests passed; Ruff, Node syntax, Desktop harness, compileall, and fresh wheel build passed.
 - Clean wheel SHA-256: `e08ab112950ac80c5ee85167e8b7feddfeb4f7ea1baeaffd541c415b80a2dd65`; 20 entries and no bytecode/cache files.
 - Real Docker canary passed with the pinned image and documented network/capability/resource policy.
-- Independent GLM technical review: `APPROVE` (`20260822_163316_09b44b`).
-- Independent Terra QA: `QA_PASS` (`20260822_171754_68399d`).
+- Independent GLM technical review: `APPROVE`.
+- Independent Terra QA: `QA_PASS`.
 - Commit privacy gates: `privacy_scan=PASS staged_files=23` and `commit_message_privacy_scan=PASS`; no bypass used.
-- Serenity Plugin Doctor: version 0.5.0, 19 tools, 0 hooks.
-- Serenity direct-host Docker canary: `SERENITY_PASS`; plugin remained disabled and Phase 1–4 gates were verified false.
+- Acceptance-host Plugin Doctor: version 0.5.0, 19 tools, 0 hooks.
+- Acceptance-host direct Docker canary: `PASS`; plugin remained disabled and Phase 1–4 gates were verified false.
 - GitHub Actions run `32602591480`: success on exact implementation commit.
 - Non-force push verified public `main` at the exact implementation SHA.
 
-The former Windows 10 MSIX VM no longer exists. Current Windows development, testing, and MSIX work uses the Windows 11 development VM when needed; Docker remains the isolated container lane, and `dc-workstation` remains orchestration-only.
+Windows-specific development and testing use a dedicated Windows test VM when needed; Docker remains the isolated container lane, and the orchestration host remains orchestration-only.

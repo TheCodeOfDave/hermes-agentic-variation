@@ -14,7 +14,7 @@ except ImportError:  # Direct module execution in local tests.
     from contracts import ContinuationMemory, RunSpec
     from state_machine import RunState, apply_transition
 
-_SCHEMA_VERSION = 5
+_SCHEMA_VERSION = 6
 
 
 class StorageConflictError(RuntimeError):
@@ -87,14 +87,15 @@ class RunStore:
         with self._connect() as connection:
             connection.executescript(
                 """
+                BEGIN IMMEDIATE;
                 CREATE TABLE IF NOT EXISTS schema_metadata (
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
                 );
                 INSERT OR IGNORE INTO schema_metadata(key, value)
-                    VALUES ('schema_version', '5');
-                UPDATE schema_metadata SET value = '5'
-                    WHERE key = 'schema_version' AND CAST(value AS INTEGER) < 5;
+                    VALUES ('schema_version', '6');
+                UPDATE schema_metadata SET value = '6'
+                    WHERE key = 'schema_version' AND CAST(value AS INTEGER) < 6;
 
                 CREATE TABLE IF NOT EXISTS runs (
                     run_id TEXT PRIMARY KEY,
@@ -149,6 +150,11 @@ class RunStore:
                     run_id TEXT NOT NULL REFERENCES runs(run_id),
                     receipt_json TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS patch_set_receipts (
+                    receipt_hash TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL REFERENCES runs(run_id),
+                    receipt_json TEXT NOT NULL
+                );
 
                 CREATE TRIGGER IF NOT EXISTS run_events_no_update
                 BEFORE UPDATE ON run_events
@@ -185,6 +191,18 @@ class RunStore:
                 BEGIN
                     SELECT RAISE(ABORT, 'sandbox_receipts is append-only');
                 END;
+                CREATE TRIGGER IF NOT EXISTS patch_set_receipts_no_update
+                BEFORE UPDATE ON patch_set_receipts
+                BEGIN
+                    SELECT RAISE(ABORT, 'patch_set_receipts is append-only');
+                END;
+
+                CREATE TRIGGER IF NOT EXISTS patch_set_receipts_no_delete
+                BEFORE DELETE ON patch_set_receipts
+                BEGIN
+                    SELECT RAISE(ABORT, 'patch_set_receipts is append-only');
+                END;
+                COMMIT;
                 """
             )
 
@@ -481,6 +499,33 @@ class RunStore:
             ).fetchall()
         return [json.loads(row["receipt_json"]) for row in rows]
 
+    def record_patch_set_attempt(
+        self, run_id: str, candidate: Any, evaluation: Any, receipt: Any
+    ) -> None:
+        """Persist a Variation Candidate, evaluation, and receipt atomically."""
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "INSERT INTO candidates(candidate_hash, run_id, candidate_json) VALUES (?, ?, ?)",
+                (candidate.identity, run_id, _canonical_json(candidate.to_dict())),
+            )
+            connection.execute(
+                "INSERT INTO evaluations(evaluation_hash, run_id, candidate_hash, evaluation_json) "
+                "VALUES (?, ?, ?, ?)",
+                (evaluation.identity, run_id, candidate.identity, _canonical_json(evaluation.to_dict())),
+            )
+            connection.execute(
+                "INSERT INTO patch_set_receipts(receipt_hash, run_id, receipt_json) VALUES (?, ?, ?)",
+                (receipt.identity, run_id, _canonical_json(receipt.to_dict())),
+            )
+
+    def patch_set_receipts(self, run_id: str) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT receipt_json FROM patch_set_receipts WHERE run_id = ? ORDER BY rowid",
+                (run_id,),
+            ).fetchall()
+        return [json.loads(row["receipt_json"]) for row in rows]
     def lineage(self, run_id: str) -> dict[str, list[dict[str, Any]]]:
         with self._connect() as connection:
             candidates = connection.execute(

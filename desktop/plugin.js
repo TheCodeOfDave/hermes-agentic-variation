@@ -96,7 +96,7 @@ function ConfigurationPage({ storage }) {
           jsx('p', {
             className: 'max-w-3xl text-sm text-(--ui-text-tertiary)',
             children:
-              'Configure inert planning defaults. Phase 4 execution is backend-owned in config.yaml and cannot be enabled from Desktop. The child remains todo-only; one bounded patch may run only in a digest-pinned Docker sandbox with no network, read-only root, dropped capabilities, resource ceilings, and no commit, push, credentials, deployment, cleanup, or deletion.'
+              'Configure inert planning defaults for Variation Cycles. Execution authority is backend-owned in config.yaml and cannot be enabled from Desktop; Desktop cannot enable Variation Cycles or widen their code-owned limits. A todo-only child may propose one canonical two-or-three-artifact Variation Proposal. A trusted data-only applier and a separate immutable evaluator/candidate-worker sandbox run with a digest-pinned image, no network, read-only roots, dropped capabilities, strict output and resource ceilings, and no commit, push, credentials, deployment, cleanup, retry, or recurrence.'
           })
         ]
       }),
@@ -106,15 +106,15 @@ function ConfigurationPage({ storage }) {
           jsx(NumberOption, {
             storage,
             storageKey: 'defaultMaxSteps',
-            label: 'Maximum steps',
-            description: 'Default candidate-step ceiling for a future approved RunSpec.',
+            label: 'Maximum cycle steps',
+            description: 'Default candidate-step ceiling for a future approved Variation Cycle.',
             min: 1
           }),
           jsx(NumberOption, {
             storage,
             storageKey: 'defaultMaxWallSeconds',
             label: 'Maximum wall time (seconds)',
-            description: 'Default wall-clock budget for a future approved run.',
+            description: 'Default wall-clock budget for a future approved Variation Cycle.',
             min: 1
           }),
           jsx(NumberOption, {
@@ -134,7 +134,7 @@ function ConfigurationPage({ storage }) {
           }),
           jsx(Field, {
             label: 'Network policy',
-            description: 'Phase 0 remains offline regardless of this future-run default.',
+            description: 'Variation Cycles remain offline regardless of this future default.',
             children: jsxs('select', {
               className:
                 'h-8 rounded-md border border-(--ui-stroke-secondary) bg-transparent px-2 text-sm',
@@ -155,8 +155,8 @@ function ConfigurationPage({ storage }) {
           jsx(TextOption, {
             storage,
             storageKey: 'evaluatorId',
-            label: 'Evaluator ID',
-            description: 'Immutable evaluator adapter identifier for a future RunSpec.'
+            label: 'Evaluation policy ID',
+            description: 'Immutable evaluation policy identifier for a future Variation Cycle.'
           }),
           jsx('div', {
             className: 'pt-1',

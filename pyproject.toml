@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-agentic-variation"
-version = "0.5.0"
+version = "0.6.0"
 description = "An AVO-inspired long-horizon experiment controller for Hermes Agent."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -29,7 +29,7 @@ testpaths = ["tests"]
 addopts = "-ra"
 
 [tool.setuptools]
-py-modules = ["contracts", "controller", "evaluator", "phase2", "phase3", "phase3_workspace", "phase4", "phase4_patch", "phase4_runner", "phase4_sandbox", "runtime", "schemas", "state_machine", "storage", "tools"]
+py-modules = ["contracts", "controller", "evaluator", "phase2", "phase3", "phase3_workspace", "phase4", "phase4_patch", "phase4_runner", "phase4_sandbox", "phase5", "phase5_patch", "phase5_fixture", "phase5_stage_a", "phase5_evaluator", "phase5_worker", "phase5_sandbox", "runtime", "schemas", "state_machine", "storage", "tools"]
 
 [tool.ruff]
 target-version = "py311"

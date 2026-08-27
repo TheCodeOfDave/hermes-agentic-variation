@@ -385,6 +385,133 @@ class SandboxReceipt(ContractMixin):
 
 
 @dataclass(frozen=True)
+class PatchSetReceipt(ContractMixin):
+    contract_version: ClassVar[str] = "avo.patch-set-receipt.v1"
+    STAGE_A_COMMAND_ID: ClassVar[str] = "phase5.trusted-applier.v1"
+    STAGE_B_COMMAND_ID: ClassVar[str] = "phase5.immutable-evaluator.v1"
+    LITERAL_CEILING_KEYS: ClassVar[tuple[str, ...]] = (
+        "memory_mib",
+        "cpus",
+        "pids_limit",
+        "tmpfs_bytes",
+        "user",
+        "stage_a_stdout_bytes",
+        "stage_b_stdout_bytes",
+        "worker_pipe_bytes",
+        "stage_a_timeout_seconds",
+        "stage_b_timeout_seconds",
+        "wait_seconds",
+    )
+    FIXED_LITERAL_CEILINGS: ClassVar[Mapping[str, Any]] = {
+        "memory_mib": 64,
+        "cpus": 0.5,
+        "pids_limit": 64,
+        "tmpfs_bytes": 16777216,
+        "user": "65534:65534",
+        "stage_a_stdout_bytes": 98304,
+        "stage_b_stdout_bytes": 4096,
+        "worker_pipe_bytes": 65536,
+    }
+
+    receipt_id: str
+    run_spec_hash: str
+    candidate_hash: str
+    evaluation_hash: str
+    baseline_paths: tuple[str, ...]
+    baseline_hashes: tuple[str, ...]
+    changed_paths: tuple[str, ...]
+    patch_set_hash: str
+    rationale_hash: str
+    member_patch_hashes: tuple[str, ...]
+    image: str
+    trusted_applier_hash: str
+    immutable_cases_hash: str
+    evaluator_hash: str
+    worker_bootstrap_hash: str
+    policy_hash: str
+    stage_a_command_id: str
+    stage_b_command_id: str
+    output_tree_hash: str
+    output_source_hashes: Mapping[str, Any]
+    literal_ceilings: Mapping[str, Any]
+    stage_a_envelope_hash: str
+    stage_a_status: str
+    stage_a_stderr_hash: str
+    stage_a_classification: str
+    stage_b_exit_code: int
+    success_trailer_matched: bool
+    evaluator_stdout_hash: str
+    evaluator_stderr_hash: str
+    worker_classification: str
+    artifact_relative_path: str
+    network_policy: str
+    cleanup_status: str
+
+    def __post_init__(self) -> None:
+        _require_text("receipt_id", self.receipt_id)
+        for name in (
+            "run_spec_hash", "candidate_hash", "evaluation_hash", "patch_set_hash",
+            "rationale_hash", "trusted_applier_hash", "immutable_cases_hash", "evaluator_hash",
+            "worker_bootstrap_hash", "policy_hash", "output_tree_hash", "stage_a_envelope_hash",
+            "stage_a_stderr_hash", "evaluator_stdout_hash", "evaluator_stderr_hash",
+        ):
+            _require_digest(name, getattr(self, name))
+        for name in ("baseline_hashes", "member_patch_hashes"):
+            values = getattr(self, name)
+            _require_text_tuple(name, values, allow_empty=False)
+            for digest in values:
+                _require_digest(name, digest)
+        _require_text_tuple("baseline_paths", self.baseline_paths, allow_empty=False)
+        _require_text_tuple("changed_paths", self.changed_paths, allow_empty=False)
+        if self.baseline_paths != ("calculator.py", "filters.py", "formatting.py"):
+            raise ContractValidationError("baseline_paths must be the canonical Variation Cycle allowlist")
+        if len(self.baseline_hashes) != 3 or not 2 <= len(self.changed_paths) <= 3:
+            raise ContractValidationError("Variation Cycle path/hash cardinality is invalid")
+        if tuple(sorted(self.changed_paths, key=lambda p: p.encode("utf-8"))) != self.changed_paths:
+            raise ContractValidationError("changed_paths must use canonical order")
+        if len(self.member_patch_hashes) != len(self.changed_paths):
+            raise ContractValidationError("member patch hashes must bind every changed path")
+        if re.fullmatch(r"[^@]+@sha256:[0-9a-f]{64}", self.image) is None:
+            raise ContractValidationError("image must be digest pinned")
+        if self.stage_a_command_id != self.STAGE_A_COMMAND_ID or self.stage_b_command_id != self.STAGE_B_COMMAND_ID:
+            raise ContractValidationError("Variation Cycle command identity mismatch")
+        if self.stage_a_status != "applied" or self.stage_a_classification != "PASS":
+            raise ContractValidationError("Stage A receipt must be a verified complete application")
+        if type(self.stage_b_exit_code) is not int or not isinstance(self.success_trailer_matched, bool):
+            raise ContractValidationError("Stage B host result types are invalid")
+        if self.network_policy != "none" or self.cleanup_status != "retained":
+            raise ContractValidationError("Variation Cycle evidence must be retained with network none")
+        normalized = self.artifact_relative_path.replace("\\", "/")
+        path = PurePosixPath(normalized)
+        if path.is_absolute() or ".." in path.parts or len(path.parts) != 2 or path.parts[0] != "phase5-artifacts" or not re.fullmatch(r"phase5-[0-9a-f]{6,32}", path.parts[1]):
+            raise ContractValidationError("artifact_relative_path is invalid")
+        output_hashes = _freeze_mapping("output_source_hashes", self.output_source_hashes)
+        if tuple(output_hashes) != self.baseline_paths:
+            raise ContractValidationError("output source hashes must preserve canonical path order")
+        for digest in output_hashes.values():
+            _require_digest("output_source_hashes", digest)
+        object.__setattr__(self, "output_source_hashes", output_hashes)
+        ceilings = _freeze_mapping("literal_ceilings", self.literal_ceilings)
+        if set(ceilings) != set(self.LITERAL_CEILING_KEYS):
+            raise ContractValidationError("literal_ceilings must bind every approved Variation Cycle limit")
+        for name, expected in self.FIXED_LITERAL_CEILINGS.items():
+            if type(ceilings[name]) is not type(expected) or ceilings[name] != expected:
+                raise ContractValidationError(f"literal_ceilings {name} differs from approved policy")
+        stage_a_timeout = ceilings["stage_a_timeout_seconds"]
+        stage_b_timeout = ceilings["stage_b_timeout_seconds"]
+        wait_seconds = ceilings["wait_seconds"]
+        if (
+            type(stage_a_timeout) is not int
+            or type(stage_b_timeout) is not int
+            or not 5 <= stage_a_timeout <= 120
+            or stage_b_timeout != stage_a_timeout
+            or type(wait_seconds) is not int
+            or not 5 <= wait_seconds <= 180
+        ):
+            raise ContractValidationError("literal_ceilings timeout or wait value is invalid")
+        object.__setattr__(self, "literal_ceilings", ceilings)
+
+@dataclass(frozen=True)
 class TerminalReceipt(ContractMixin):
     contract_version: ClassVar[str] = "avo.terminal-receipt.v1"
     TERMINAL_STATES: ClassVar[frozenset[str]] = frozenset(

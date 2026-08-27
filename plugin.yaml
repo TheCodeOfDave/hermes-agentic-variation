@@ -1,12 +1,12 @@
 manifest_version: 2
 api_version: 1
 name: agentic-variation
-version: 0.5.0
+version: 0.6.0
 description: AVO-inspired confined model-authored patch sandbox for Hermes Agent.
 author: TheCodeOfDave
 license: MIT
 homepage: https://github.com/TheCodeOfDave/hermes-agentic-variation
-tags: [agents, experimentation, evolutionary-search, phase-4]
+tags: [agents, experimentation, evolutionary-search, variation-cycles]
 config_schema:
   phase1_enabled:
     type: bool
@@ -48,6 +48,18 @@ config_schema:
     type: int
     default: 30
     description: Host timeout for the pinned, networkless Docker sandbox; valid range 5-120 seconds.
+  phase5_enabled:
+    type: bool
+    default: false
+    description: Backend-only authority gate for one atomic bounded Variation Cycle.
+  phase5_wait_seconds:
+    type: int
+    default: 120
+    description: Bounded wait for the todo-only Variation Cycle child; valid range 5-180 seconds.
+  phase5_sandbox_timeout_seconds:
+    type: int
+    default: 30
+    description: Host timeout for each pinned networkless Variation Cycle stage; valid range 5-120 seconds.
   default_max_steps:
     type: int
     default: 5
@@ -96,3 +108,8 @@ provides_tools:
   - avo_patch_phase4
   - avo_phase4_receipt
   - avo_phase4_reconcile
+
+  - avo_create_phase5_run
+  - avo_patchset_phase5
+  - avo_phase5_receipt
+  - avo_phase5_reconcile

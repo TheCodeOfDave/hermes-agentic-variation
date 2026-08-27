@@ -5,9 +5,9 @@ An **AVO-inspired** long-horizon experiment controller for [Hermes Agent](https:
 > [!IMPORTANT]
 > This project is independent community work. It is not NVIDIA AVO, is not affiliated with NVIDIA, and does not reproduce NVIDIA's unreleased internal implementation.
 
-## Current status: Phase 4
+## Current status: Variation Cycles
 
-Phase 4 accepts one bounded model-authored unified patch and executes it only inside a digest-pinned Docker sandbox. The child remains `todo`-only. The sandbox has no network, a read-only root, dropped capabilities, no-new-privileges, fixed read-only mounts, CPU/memory/PID/tmpfs ceilings, and one fixed test command.
+The current Variation Cycle accepts one bounded model-authored, two-or-three-artifact proposal and evaluates it through separate apply and evaluation sandboxes. The child remains `todo`-only. Both sandboxes use a digest-pinned image with no network, read-only roots and mounts, dropped capabilities, no-new-privileges, and fixed CPU, memory, PID, tmpfs, time, and output ceilings.
 
 Implemented now:
 
@@ -16,7 +16,7 @@ Implemented now:
 - a deterministic run state machine with explicit terminal states and bounded stagnation handling;
 - a SQLite run ledger with optimistic concurrency and append-only transition evidence;
 - a model-free fixture evaluator that fails closed on missing correctness or score evidence;
-- nineteen Hermes tools:
+- twenty-three Hermes tools:
   - `avo_phase0_info`
   - `avo_validate_run_spec`
   - `avo_create_run`
@@ -36,48 +36,43 @@ Implemented now:
   - `avo_patch_phase4`
   - `avo_phase4_receipt`
   - `avo_phase4_reconcile`
+  - `avo_create_phase5_run`
+  - `avo_patchset_phase5`
+  - `avo_phase5_receipt`
+  - `avo_phase5_reconcile`
 - an opt-in Hermes Desktop companion with an **Agentic Variation** configuration page;
 - configurable planning defaults for step, time, cost, stagnation, network, toolset, and evaluator fields, stored in the Desktop plugin's isolated local storage.
 
-Phase 4 remains deliberately narrow:
+Variation Cycles remain deliberately narrow:
 
-- at most three explicitly requested variation steps;
-- one supervisor advice call after deterministic stagnation;
-- execution disabled by default through independent backend Phase 1 and Phase 2 gates;
-- versioned compact continuation memory and additive SQLite schema v3;
-- deterministic reconciliation from persisted evidence rather than process-local handles;
-- no child file or command tools;
-- command execution;
-- repository mutation;
-- experiment scheduling;
-- network access;
-- candidate promotion, publication, or deployment;
-- autonomous schedules, recurrence, or multiple supervisor interventions.
-- one trusted-template repository mutation per run;
-- no child file/terminal access because the public lifecycle cannot confine its cwd;
-- no model-authored source bytes or commands;
-- no commit, remote, push, credentials, network, deployment, cleanup, or deletion.
-- one existing file, one hunk, one patch, one sandbox, one test command;
+- one explicitly requested generation attempt;
+- one fixed, plugin-owned source fixture and immutable evaluation corpus;
+- one todo-only child that returns proposal data rather than touching files;
+- two or three allowlisted source artifacts changed atomically;
 - no additions, deletions, renames, binary patches, package installs, or network;
-- no Docker socket exposure to the child or to Serenity’s `hermes-owner` container.
+- no child file, terminal, Git, Docker, credential, or test authority;
+- no Docker socket exposure;
+- no commit, remote, push, promotion, publication, deployment, cleanup, retry, scheduling, or recurrence;
+- deterministic recovery from persisted evidence without rerunning effects.
 
 That absence is deliberate. First make the control plane boring and correct. Then attach an agent.
 
 ## Architecture
 
 ```text
-Approved immutable RunSpec
+Approved immutable Cycle Specification
   -> plugin-owned immutable baseline
-  -> todo-only child returns one strict unified patch
-  -> host validator accepts one calculator.py hunk
-  -> pinned networkless Docker sandbox applies and tests patch
-  -> content-addressed candidate exported separately
-  -> append-only sandbox receipt and terminal state
+  -> todo-only child returns one strict Variation Proposal
+  -> host validator accepts two or three allowlisted artifacts
+  -> pinned networkless apply sandbox treats patches as data
+  -> separate immutable evaluator executes the candidate
+  -> content-addressed Variation Candidate exported separately
+  -> append-only Variation Receipt and terminal state
 ```
 
 The evaluator—not a model—owns candidate eligibility.
 
-See [`docs/PHASE0.md`](docs/PHASE0.md), [`docs/PHASE1.md`](docs/PHASE1.md), [`docs/PHASE2.md`](docs/PHASE2.md), [`docs/PHASE3.md`](docs/PHASE3.md), and [`docs/PHASE4.md`](docs/PHASE4.md).
+Implementation-generation notes remain under `docs/`; operator-facing surfaces use Variation Cycle terminology rather than exposing internal generation numbers.
 
 ## Development
 
