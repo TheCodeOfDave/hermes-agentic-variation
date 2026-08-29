@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import importlib.util
 import json
 import re
@@ -293,6 +294,28 @@ def test_phase5_handler_bounds_docker_unavailable_factory_error():
         "error_type": "VariationCycleUnavailable",
         "error": "Docker unavailable",
     }
+
+
+def test_disabled_variation_cycle_rejects_before_plugin_storage_import(monkeypatch):
+    real_import = builtins.__import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "plugins.plugin_storage":
+            raise AssertionError("disabled Variation Cycle touched plugin storage")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    plugin = load_plugin_module()
+    ctx = FakeContext()
+    plugin.register(ctx)
+
+    result = json.loads(
+        ctx.tools["avo_create_phase5_run"]["handler"](
+            {"objective": "vary artifact", "approval_receipt": "approved"}
+        )
+    )
+
+    assert result["error_type"] == "VariationCycleDisabledError"
 
 
 def test_variation_cycle_operator_surfaces_do_not_expose_phase_label():

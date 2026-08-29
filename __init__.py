@@ -196,7 +196,7 @@ def register(ctx):
     phase2_handlers = tools.make_phase2_handlers(phase2_controller_factory)
     phase3_handlers = tools.make_phase3_handlers(phase3_controller_factory)
     phase4_handlers = tools.make_phase4_handlers(phase4_controller_factory)
-    phase5_handlers = tools.make_phase5_handlers(phase5_controller_factory)
+    phase5_handlers = tools.make_phase5_handlers(phase5_controller_factory, enabled=phase5_enabled)
     def step_handler(args, **kwargs):
         if str(args.get("run_id", "")).startswith("phase4-"):
             return tools.avo_phase3_tool_rejected(

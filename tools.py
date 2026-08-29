@@ -264,7 +264,7 @@ def make_phase4_handlers(controller_factory):
     }
 
 
-def make_phase5_handlers(controller_factory):
+def make_phase5_handlers(controller_factory, *, enabled: bool = True):
     def operator_error_type(exc: Exception) -> str:
         if isinstance(exc, Phase5DisabledError):
             return "VariationCycleDisabledError"
@@ -278,6 +278,10 @@ def make_phase5_handlers(controller_factory):
                                "error": "Dedicated Variation Cycle tools require a valid variation identifier."},
                               sort_keys=True)
         try:
+            if not enabled:
+                raise Phase5DisabledError(
+                    "Variation Cycle execution is disabled; enable it explicitly in backend configuration."
+                )
             controller = controller_factory()
             method = getattr(controller, method_name)
             if method_name == "create_run":
